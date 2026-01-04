@@ -27,7 +27,7 @@ public:
 
     Pattern get_pattern_lookup(int guess_index, int answer_index) const;
 
-    StateBitset prune_state(const StateBitset& current, int guess_index, int answer_index);
+    const StateBitset prune_state(const StateBitset& current, int guess_index, Pattern target_pattern) const;
 
     const std::string& get_guess_str(int index) const { return guesses[index]; }
     const std::string& get_answer_str(int index) const { return answers[index]; }

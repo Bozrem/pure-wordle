@@ -69,15 +69,14 @@ Pattern Wordle::compute_pattern(const std::string& guess, const std::string& tar
     return pattern;
 }
 
-StateBitset Wordle::prune_state(const StateBitset& current, int guess_index, int answer_index) {
-    Pattern pattern = get_pattern_lookup(guess_index, answer_index);
+const StateBitset Wordle::prune_state(const StateBitset& current, int guess_index, Pattern target_pattern) const {
     StateBitset next_state;
     next_state.reset();
 
     // TODO: Apply bitmap SIMD optimization
     for (int i = 0; i < NUM_ANSWERS; i++) {
         if (current.test(i)) {
-            if (get_pattern_lookup(guess_index, i) == pattern)
+            if (get_pattern_lookup(guess_index, i) == target_pattern)
                 next_state.set(i);
         }
     }
