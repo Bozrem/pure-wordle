@@ -1,0 +1,28 @@
+# Basics
+apple,apple,ggggg
+abcde,fghij,-----
+abcde,bcdea,yyyyy
+
+abbey,kebab,yygy-
+abbey,babes,yygg-
+
+abcde,aaccc,g-g--
+
+robot,booob,-gyg-
+
+speed,crepe,-ygy-
+
+eerie,eeeer,ggy-y
+
+# Off by one
+sharp,shard,gggg-
+fails,falls,gg-gg
+
+fllas,falls,gygyg
+
+# Reversed
+party,ytrap,yygyy
+
+# Test that green has priority
+eezzz,aeaaa,-g---
+zazzz,aazzz,-gggg

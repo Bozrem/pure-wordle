@@ -3,7 +3,6 @@
 #include "Wordle.hpp"
 
 #include <iostream>
-#include <omp.h>
 
 int main() {
     // TODO: Add config
