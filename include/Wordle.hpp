@@ -25,7 +25,9 @@ public:
 
     static Pattern compute_pattern(const std::string& guess, const std::string& target);
 
-    Pattern get_pattern_lookup(int guess_index, int answer_index) const;
+    Pattern get_pattern_lookup(int guess_index, int answer_index) const {
+        return pattern_lut[guess_index * NUM_ANSWERS + answer_index];
+    }
 
     const StateBitset prune_state(const StateBitset& current, int guess_index, Pattern target_pattern) const;
 

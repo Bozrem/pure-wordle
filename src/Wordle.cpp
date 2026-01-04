@@ -90,8 +90,5 @@ const StateBitset Wordle::prune_state(const StateBitset& current, int guess_inde
     return next_state;
 }
 
-inline Pattern Wordle::get_pattern_lookup(int guess_index, int answer_index) const {
-    return pattern_lut[guess_index * NUM_ANSWERS + answer_index];
-}
 
 

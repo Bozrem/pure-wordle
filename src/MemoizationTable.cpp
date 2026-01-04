@@ -6,7 +6,6 @@ int MemoizationTable::get_bucket_index(const StateBitset& state) const {
     return std::hash<StateBitset>{}(state) % NUM_BUCKETS;
 }
 
-
 std::optional<Entry> MemoizationTable::get(const StateBitset& state) const {
     const Bucket& bucket = buckets[get_bucket_index(state)];
     std::shared_lock lock(bucket.lock);
