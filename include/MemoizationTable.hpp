@@ -1,10 +1,11 @@
 #pragma once
 
 #include "Types.hpp"
+#include "BitsetHash.hpp"
 
 #include <unordered_map>
 #include <shared_mutex>
-#include <vector>
+#include <array>
 #include <optional>
 
 struct Entry {
@@ -16,12 +17,12 @@ class MemoizationTable {
 private:
     // Sort of like lock striping, but avoiding the rehashing issues
     struct Bucket {
-        std::unordered_map<StateBitset, Entry> map;
+        std::unordered_map<StateBitset, Entry, BitsetHash> map;
         mutable std::shared_mutex lock;
     };
 
     static constexpr int NUM_BUCKETS = 256;
-    std::vector<Bucket> buckets;
+    std::array<Bucket, NUM_BUCKETS> buckets;
 
     int get_bucket_index(const StateBitset& state) const;
 public:
