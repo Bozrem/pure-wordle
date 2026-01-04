@@ -6,6 +6,12 @@
 
 using Pattern = uint8_t;
 
+enum class Color : uint8_t {
+    Gray = 0,
+    Yellow = 1,
+    Green = 2
+};
+
 class Wordle {
 private:
     std::vector<std::string> answers;
@@ -13,8 +19,7 @@ private:
     std::vector<uint8_t> pattern_lut;
 
 public:
-    Wordle();
-    void load_data(const std::string& answer_path, const std::string& guesses_path);
+    Wordle(const std::string& answers_path, const std::string& guesses_path);
 
     void build_lut();
 
@@ -22,7 +27,8 @@ public:
 
     Pattern get_pattern_lookup(int guess_index, int answer_index) const;
 
-    StateBitset prune_state(const StateBitset& current, int guess_index, Pattern pattern);
+    StateBitset prune_state(const StateBitset& current, int guess_index, int answer_index);
 
     const std::string& get_guess_str(int index) const { return guesses[index]; }
+    const std::string& get_answer_str(int index) const { return answers[index]; }
 };
