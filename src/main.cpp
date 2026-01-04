@@ -8,7 +8,7 @@
 int main() {
     // TODO: Add config
 
-    Wordle game("data/answers.txt", "data/guesses.txt");
+    Wordle game("data/answers_small.txt", "data/guesses.txt");
 
     std::cout << "Building Wordle LUT...\n";
     game.build_lut(); // TODO: This should be in MemoizationTable for checkpointing
@@ -32,7 +32,7 @@ int main() {
             std::cout << "\t[NEW BEST!]";
         }
 
-        std::cout << "\n";
+        std::cout << std::endl;
 
         // TODO: Add checkpointing
         // TODO: Add better statistics
