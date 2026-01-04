@@ -3,7 +3,7 @@
 MemoizationTable::MemoizationTable() = default;
 
 int MemoizationTable::get_bucket_index(const StateBitset& state) const {
-    return std::hash<StateBitset>{}(state) % NUM_BUCKETS; // TODO: Hashing is only built-in for C++20, I'm on 17
+    return std::hash<StateBitset>{}(state) % NUM_BUCKETS;
 }
 
 
