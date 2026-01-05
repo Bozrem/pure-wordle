@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Types.hpp"
 #include "Wordle.hpp"
 #include "MemoizationTable.hpp"
 
@@ -16,5 +17,7 @@ public:
 
 private:
     // The actual internal recursion
-    double solve_state(const StateBitset& state);
+    double solve_state(const StateBitset& state, const GuessBitset& useful_guesses);
+
+    GuessBitset prune_actions(const StateBitset& state, const GuessBitset& curr_guesses);
 };
