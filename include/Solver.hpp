@@ -4,6 +4,7 @@
 #include "Wordle.hpp"
 #include "MemoizationTable.hpp"
 
+constexpr int PRUNE_THRESHOLD = 50;
 
 class Solver {
     const Wordle& game;

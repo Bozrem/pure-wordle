@@ -4,6 +4,8 @@
 #include <vector>
 #include <string>
 
+constexpr int NUM_PATTERNS = 243;
+
 using Pattern = uint8_t;
 
 enum class Color : uint8_t {

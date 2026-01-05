@@ -1,6 +1,7 @@
 #include "MemoizationTable.hpp"
 #include "Solver.hpp"
 #include "Wordle.hpp"
+#include "Statistics.hpp"
 
 #include <iostream>
 
@@ -32,6 +33,8 @@ int main() {
         }
 
         std::cout << std::endl;
+
+        if (i % 5 == 0) stats.print();
 
         // TODO: Add checkpointing
         // TODO: Add better statistics
