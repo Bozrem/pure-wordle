@@ -1,11 +1,8 @@
 #pragma once
-
 #include "Types.hpp"
 #include "BitsetHash.hpp"
-
-#include <unordered_map>
-#include <shared_mutex>
-#include <array>
+#include "Statistics.hpp"
+#include <parallel_hashmap/phmap.h>
 #include <optional>
 
 struct Entry {
@@ -15,21 +12,44 @@ struct Entry {
 
 class MemoizationTable {
 private:
-    // Sort of like lock striping, but avoiding the rehashing issues
-    struct Bucket {
-        std::unordered_map<StateBitset, Entry, BitsetHash> map;
-        mutable std::shared_mutex lock;
-    };
+    using MapType = phmap::parallel_flat_hash_map<
+        StateBitset, 
+        Entry, 
+        BitsetHash,
+        std::equal_to<StateBitset>,
+        std::allocator<std::pair<const StateBitset, Entry>>,
+        9 // 2^9 = 512 submaps
+    >;
 
-    static constexpr int NUM_BUCKETS = 256;
-    std::array<Bucket, NUM_BUCKETS> buckets;
+    MapType map;
 
-    int get_bucket_index(const StateBitset& state) const;
 public:
-    MemoizationTable();
-    std::optional<Entry> get(const StateBitset& state) const;
-    void insert(const StateBitset& state, double val, int guess_index);
+    MemoizationTable() {
+        map.reserve(1000000); 
+    }
 
-    // Statistics
-    size_t total_size() const;
+    std::optional<Entry> get(const StateBitset& state) {
+        std::optional<Entry> result = std::nullopt;
+ 
+        // if_contains locks the specific shard for the duration of the lambda
+        bool found = map.if_contains(state, [&](const auto& pair) {
+            result = pair.second;
+        });
+
+        if (found) {
+            stats.cache_hits++;
+            return result;
+        }
+
+        stats.cache_misses++;
+        return std::nullopt;
+    }
+
+    void insert(const StateBitset& state, double val, int guess_index) {
+        map.try_emplace(state, Entry{val, guess_index});
+    }
+
+    size_t total_size() const {
+        return map.size();
+    }
 };
