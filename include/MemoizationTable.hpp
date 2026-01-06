@@ -20,8 +20,8 @@
  * It has to be done like this for two reasons
  * 1. Cached values must know their depth
  *      If we tried without it, then the 1e9 value assigned to a bitset at depth 6 is the same as that one at depth 2
- * 2. That was way too slow, and resulted in a 5x cache miss rate
- *      This method gets it much closer to no-depth with near the same hit rates
+ * 2. That was way too slow, and resulted in a 50x cache miss rate
+ *      This method gets it much closer to no-depth with around 5x the miss rate
  */
 
 class MemoizationTable {

@@ -41,7 +41,7 @@ SearchInfo Solver::evaluate_guess(const StateBitset& state, int guess_ind, const
     }
 
     double total_cost = 0.0;
-    int max_height;
+    int max_height = 0;
 
     for (int p = 0; p < NUM_PATTERNS; ++p) {
         if (pattern_count[p] == 0) continue;
@@ -64,7 +64,7 @@ SearchInfo Solver::solve_state(const StateBitset& state, const GuessBitset& rema
     // TODO: Check if this properly treats guessing the correct answer
     // Need to do some testing on these functions with the expected numbers I do on paper
  
-    if (auto entry = cache.get(state, depth)) return { entry->expected_guesses, entry->height }; // Does this need to be +1?
+    if (auto entry = cache.get(state, depth)) return { entry->expected_guesses, entry->height };
 
     GuessBitset useful_guesses = prune_actions(state, remaining_guesses);
 
@@ -131,7 +131,7 @@ SearchInfo Solver::solve_state(const StateBitset& state, const GuessBitset& rema
 
     cache.insert(state, depth, global_best_cost, global_best_guess, global_max_subtree);
 
-    return { global_best_cost, global_max_subtree }; // Is this a +1?
+    return { global_best_cost, global_max_subtree };
 }
 
 GuessBitset Solver::prune_actions(const StateBitset& state, const GuessBitset& curr_guesses) {
