@@ -4,6 +4,8 @@
 #include <parallel_hashmap/phmap.h>
 #include <optional>
 
+// TODO: This got too big. Move logic to a cpp
+
 /*
  * Outwardly, this behaves as a single table. Interally, it has two
  * The Agnostic table:

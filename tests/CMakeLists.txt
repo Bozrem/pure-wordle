@@ -11,9 +11,11 @@ FetchContent_MakeAvailable(googletest)
 
 # Create test executable
 add_executable(WordleTests WordleTests.cpp)
+add_executable(MemoTest MemoizationTableTest.cpp)
 
 # Link WordleCore and GTest
 target_link_libraries(WordleTests PRIVATE WordleCore GTest::gtest_main)
+target_link_libraries(MemoTest PRIVATE WordleCore GTest::gtest_main)
 
 # Copy patterns csv into build
 add_custom_command(TARGET WordleTests POST_BUILD
@@ -26,3 +28,4 @@ add_custom_command(TARGET WordleTests POST_BUILD
 # Register tests with gtest
 include(GoogleTest)
 gtest_discover_tests(WordleTests)
+gtest_discover_tests(MemoTest)
