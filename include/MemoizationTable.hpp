@@ -29,6 +29,7 @@ public:
     struct SearchResult {
         double expected_guesses;
         int best_guess_index;
+        int height;
     };
 
     MemoizationTable() {
@@ -42,7 +43,9 @@ public:
             // We can only use this value if the solution tree fits within the remaining moves.
             if (depth + it->second.max_subtree_height <= 6) {
                 stats.cache_hits++;
-                return SearchResult{it->second.expected_guesses, it->second.best_guess_index};
+                return SearchResult{it->second.expected_guesses,
+                                    it->second.best_guess_index,
+                                    it->second.max_subtree_height};
             }
         }
 
@@ -50,7 +53,9 @@ public:
         SpecificKey key{state, static_cast<uint8_t>(depth)};
         if (auto it = specific_map.find(key); it != specific_map.end()) {
             stats.cache_hits++;
-            return SearchResult{it->second.expected_guesses, it->second.best_guess_index};
+            return SearchResult{it->second.expected_guesses,
+                                it->second.best_guess_index,
+                                7 - depth};
         }
 
         stats.cache_misses++;

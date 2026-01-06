@@ -6,79 +6,132 @@
 
 Solver::Solver(const Wordle& g, MemoizationTable& cache) : game(g), cache(cache) {}
 
+// -- Public --
+
 double Solver::evaluate_opener(int guess_index) {
     StateBitset root_state;
-    root_state.set(); // Inits all to 1, all answers are still possible
+    root_state.set(); // All answers possible
     GuessBitset root_guesses;
-    root_guesses.set();
+    root_guesses.set(); // All guesses allowed
 
-    std::array<int, NUM_PATTERNS> pattern_count {0};
+    SearchInfo result;
 
-    for (int i = 0; i < NUM_ANSWERS; ++i)
-        pattern_count[game.get_pattern_lookup(guess_index, i)]++;
-
-    // Run those patterns to get cost
-    double total_cost = 0.0;
-
-    #pragma omp parallel for schedule(dynamic, 1) reduction(+:total_cost)
-    for (int p = 0; p < NUM_PATTERNS; ++p) {
-        if (pattern_count[p] == 0) continue; // Don't bother with ones that don't happen
-
-        const StateBitset next_state = game.prune_state(root_state, guess_index, p);
-        double next_state_cost = solve_state(next_state, root_guesses);
-        total_cost += (next_state_cost * pattern_count[p]);
+    // Create the thread pool
+    #pragma omp parallel
+    {
+        // One thread to start the task building
+        #pragma omp single
+        {
+            // Spawns new tasks internally
+            result = evaluate_guess(root_state, guess_index, root_guesses, 1);
+        }
     }
 
-    return 1 + (total_cost / NUM_ANSWERS);
+    return result.expected_cost;
 }
 
-double Solver::solve_state(const StateBitset& state, const GuessBitset& remaining_guesses) {
+// -- Private Primary --
+
+SearchInfo Solver::evaluate_guess(const StateBitset& state, int guess_ind, const GuessBitset& useful_guesses, int depth) {
+    std::array<int, NUM_PATTERNS> pattern_count = {0};
+
+    for (int a = 0; a < NUM_ANSWERS; ++a) {
+        if (!state.test(a)) continue; // Answer not possible in this state
+        pattern_count[game.get_pattern_lookup(guess_ind, a)]++;
+    }
+
+    double total_cost = 0.0;
+    int max_height;
+
+    for (int p = 0; p < NUM_PATTERNS; ++p) {
+        if (pattern_count[p] == 0) continue;
+
+        StateBitset new_state = game.prune_state(state, guess_ind, p);
+        SearchInfo new_state_res = solve_state(new_state, useful_guesses, depth + 1);
+        total_cost += new_state_res.expected_cost * pattern_count[p];
+        max_height = std::max(max_height, new_state_res.max_height);
+    }
+
+    return { 1 + (total_cost / state.count()), max_height + 1 };
+}
+
+SearchInfo Solver::solve_state(const StateBitset& state, const GuessBitset& remaining_guesses, int depth) {
     stats.nodes_visited++;
 
+    if (depth > 6) return { FAIL_COST, 0 };     // Fail case
     int active_count = state.count();
-    if (active_count == 1) return 1.0; // 1 guess left to make
-    if (active_count == 0) return 0.0; // I don't THINK this should happen? TODO: Check
-
-    if (auto entry = cache.get(state)) return entry->expected_guesses;
+    if (active_count == 1) return { 1.0, 1 };  // 1 option left case
+    // TODO: Check if this properly treats guessing the correct answer
+    // Need to do some testing on these functions with the expected numbers I do on paper
+ 
+    if (auto entry = cache.get(state, depth)) return { entry->expected_guesses, entry->height }; // Does this need to be +1?
 
     GuessBitset useful_guesses = prune_actions(state, remaining_guesses);
 
-    double best_cost = 1000;
-    int best_guess_index = -1;
+    double global_best_cost = 1000; // Across all tasks
+    int global_max_subtree = 1000;
+    int global_best_guess = -1; // Across all tasks
 
-    for (int g = 0; g < NUM_GUESSES; ++g) {
-        if (!useful_guesses.test(g)) continue; // Ignore prunded guesses
-        std::array<int, NUM_PATTERNS> pattern_count = {0};
+    std::vector<int> guess_inds;
+    guess_inds.reserve(useful_guesses.count()); // TODO: See if faster to do NUM_GUESSES
+    for (int g = 0; g < NUM_GUESSES; ++g)
+        if (useful_guesses.test(g)) guess_inds.push_back(g);
 
-        for (int a = 0; a < NUM_ANSWERS; ++a) {
-            if (!state.test(a)) continue; // Answer not possible in this state
-            pattern_count[game.get_pattern_lookup(g, a)]++;
+    if (active_count > 50) {
+        // Using Task Parallel
+        int total_guesses = remaining_guesses.size();
+
+        for (int i = 0; i < total_guesses; i += CHUNK_SIZE) {
+            // Create a task for this chunk of guesses
+            #pragma omp task shared(guess_inds, global_best_cost, global_best_guess, state, useful_guesses)
+            {
+                double local_best_cost = 1000;
+                int local_max_subtree = 1000;
+                int local_best_guess = -1;
+ 
+                int end = std::min(i + CHUNK_SIZE, total_guesses);
+                for (int j = i; j < end; ++j) {
+                    int g = guess_inds[j];
+
+                    SearchInfo res = evaluate_guess(state, g, useful_guesses, depth + 1);
+
+                    if (res.expected_cost < local_best_cost) {
+                        local_best_cost = res.expected_cost;
+                        local_max_subtree = res.max_height;
+                        local_best_guess = g;
+                    }
+                }
+
+                // Rejoin local costs to the global one
+                #pragma omp critical
+                {
+                    if (local_best_cost < global_best_cost) {
+                        global_best_cost = local_best_cost;
+                        global_max_subtree = local_max_subtree;
+                        global_best_guess = local_best_guess;
+                    }
+                }
+            }
         }
+        // Parent waits here and does tasks
+        #pragma omp taskwait
+    }
+    else {
+        // Avoiding task overhead, running serial
+        for (int g : guess_inds) {
+            SearchInfo res = evaluate_guess(state, g, useful_guesses, depth + 1);
 
-        double total_cost = 0.0;
-
-        for (int p = 0; p < NUM_PATTERNS; ++p) {
-            if (pattern_count[p] == 0) continue;
-
-            const StateBitset next_state = game.prune_state(state, g, p);
-            double next_state_cost = solve_state(next_state, useful_guesses);
-            total_cost += (next_state_cost * pattern_count[p]);
-
-            // Optimization idea, check cost throughout this and fail fast if exceeds
-            // TODO: Keep best as non-divided, since active count is the same. Avoids FP errors more too
-        }
-
-        double expected_value = 1.0 + (total_cost / active_count);
-
-        if (expected_value < best_cost) {
-            best_cost = expected_value;
-            best_guess_index = g;
+            if (res.expected_cost < global_best_cost) {
+                global_best_cost = res.expected_cost;
+                global_max_subtree = res.max_height;
+                global_best_guess = g;
+            }
         }
     }
 
-    cache.insert(state, best_cost, best_guess_index);
+    cache.insert(state, depth, global_best_cost, global_best_guess, global_max_subtree);
 
-    return best_cost;
+    return { global_best_cost, global_max_subtree }; // Is this a +1?
 }
 
 GuessBitset Solver::prune_actions(const StateBitset& state, const GuessBitset& curr_guesses) {
