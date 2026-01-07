@@ -23,7 +23,7 @@ int main() {
     std::cout << "Finished building Wordle LUT\n";
 
     MemoizationTable cache;
-    Solver solver(game, cache); // Solvers have nothing but refs to game and cache, what is advantage of thread-local?
+    Solver solver(game, cache); // TODO: Investigate Thread-local advantage
 
     RunState state;
     // TODO: Checkpoint recovery here
@@ -40,6 +40,8 @@ int main() {
     #pragma omp parallel
     {
         while (true) {
+            // TODO: Optimization to consider, choose random guesses instead of alphabetical
+            // Right now, we probably often get cache misses because words are similar, and a different thread is already working on it
             int guess_ind = ticket_counter.fetch_add(1);
             if (guess_ind >= NUM_GUESSES) break; // This only breaks for THIS thread right?
 

@@ -44,7 +44,7 @@ public:
         if (auto it = agnostic_map.find(state); it != agnostic_map.end()) {
             // We can only use this value if the solution tree fits within the remaining moves.
             if (depth + it->second.max_subtree_height <= 6) {
-                stats.cache_hits++;
+                //stats.cache_hits++;
                 return SearchResult{it->second.expected_guesses,
                                     it->second.best_guess_index,
                                     it->second.max_subtree_height};
@@ -54,13 +54,13 @@ public:
         // Check Specific Table (missing from agnostic or would be tainted)
         SpecificKey key{state, static_cast<uint8_t>(depth)};
         if (auto it = specific_map.find(key); it != specific_map.end()) {
-            stats.cache_hits++;
+            //stats.cache_hits++;
             return SearchResult{it->second.expected_guesses,
                                 it->second.best_guess_index,
                                 7 - depth};
         }
 
-        stats.cache_misses++;
+        //stats.cache_misses++;
         return std::nullopt;
     }
 

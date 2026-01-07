@@ -46,4 +46,4 @@ struct SolverStats {
 };
 
 // Global singleton instance for simplicity in this project
-inline SolverStats stats;
+//inline SolverStats stats;

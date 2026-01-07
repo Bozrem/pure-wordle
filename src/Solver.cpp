@@ -1,6 +1,6 @@
 #include "Solver.hpp"
 #include "MemoizationTable.hpp"
-#include "Statistics.hpp"
+// #include "Statistics.hpp"
 #include "Wordle.hpp"
 #include "Types.hpp"
 
@@ -36,7 +36,7 @@ std::array<int, NUM_PATTERNS> pattern_count = {0};
 // -- Private Primary --
 
 SearchInfo Solver::solve_state(const StateBitset& state, const GuessBitset& remaining_guesses, int depth) {
-    stats.nodes_visited++;
+    // stats.nodes_visited++;
 
     if (depth > 6) return { FAIL_COST, 0 };     // Fail case
     int active_count = state.count();
@@ -73,14 +73,14 @@ SearchInfo Solver::solve_state(const StateBitset& state, const GuessBitset& rema
 }
 
 GuessBitset Solver::prune_actions(const StateBitset& state, const GuessBitset& curr_guesses) {
-    stats.prune_function_calls++;
+    //stats.prune_function_calls++;
     int active_count = state.count();
 
     static thread_local std::vector<std::pair<std::string, int>> candidates;
     candidates.clear();
     candidates.reserve(NUM_GUESSES); // Reserve max once
 
-    stats.total_actions_checked += curr_guesses.count();
+    //stats.total_actions_checked += curr_guesses.count();
 
     // Build a list of active inds to avoid 2315 bitset pass each time in the inner
     std::vector<int> active_indices;
@@ -107,7 +107,7 @@ GuessBitset Solver::prune_actions(const StateBitset& state, const GuessBitset& c
         }
 
         if (all_same) {
-            stats.useless_pruned++;
+            //stats.useless_pruned++;
             continue;
         }
 
@@ -128,11 +128,11 @@ GuessBitset Solver::prune_actions(const StateBitset& state, const GuessBitset& c
             if (candidates[i].first != candidates[i-1].first) {
                 useful_guesses.set(candidates[i].second); // Only add if not same as last
             } else {
-                stats.duplicates_pruned++;
+                //stats.duplicates_pruned++;
             }
         }
     }
 
-    stats.total_actions_kept += useful_guesses.count();
+    //stats.total_actions_kept += useful_guesses.count();
     return useful_guesses;
 }
