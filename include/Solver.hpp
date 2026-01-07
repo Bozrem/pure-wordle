@@ -7,8 +7,6 @@
 #include "MemoizationTable.hpp"
 
 constexpr int PRUNE_THRESHOLD = 20; // TODO: Add these to a config obj
-constexpr int PARALLEL_THRESHOLD = 20;
-constexpr int CHUNK_SIZE = 20;
 constexpr double FAIL_COST = 1e9;
 
 struct SearchInfo {
@@ -27,13 +25,11 @@ class Solver {
 public:
     Solver(const Wordle& g, MemoizationTable& cache);
 
-    // This is one thread looking at the cost of one opening
-    double evaluate_opener(int guess_index);
+    SearchInfo evaluate_guess(const StateBitset& state, int guess_ind, const GuessBitset& useful_guesses, int depth);
 
 private:
     // The actual internal recursion
     SearchInfo solve_state(const StateBitset& state, const GuessBitset& useful_guesses, int depth);
-    SearchInfo evaluate_guess(const StateBitset& state, int guess_ind, const GuessBitset& useful_guesses, int depth);
 
     GuessBitset prune_actions(const StateBitset& state, const GuessBitset& curr_guesses);
 

@@ -4,41 +4,19 @@
 #include "Wordle.hpp"
 #include "Types.hpp"
 
+#include <omp.h>
+
 Solver::Solver(const Wordle& g, MemoizationTable& cache) : game(g), cache(cache) {}
 
 // -- Public --
 
-double Solver::evaluate_opener(int guess_index) {
-    StateBitset root_state;
-    root_state.set(); // All answers possible
-    GuessBitset root_guesses;
-    root_guesses.set(); // All guesses allowed
-
-    SearchInfo result;
-
-    // Create the thread pool
-    #pragma omp parallel
-    {
-        // One thread to start the task building
-        #pragma omp single
-        {
-            // Spawns new tasks internally
-            result = evaluate_guess(root_state, guess_index, root_guesses, 1);
-        }
-    }
-
-    return result.expected_cost;
-}
-
-// -- Private Primary --
-
 SearchInfo Solver::evaluate_guess(const StateBitset& state, int guess_ind, const GuessBitset& useful_guesses, int depth) {
-    std::array<int, NUM_PATTERNS> pattern_count = {0};
+std::array<int, NUM_PATTERNS> pattern_count = {0};
 
     for (int a = 0; a < NUM_ANSWERS; ++a) {
         if (!state.test(a)) continue; // Answer not possible in this state
         pattern_count[game.get_pattern_lookup(guess_ind, a)]++;
-    }
+    } // TODO: Replace with a generalized pattern counter
 
     double total_cost = 0.0;
     int max_height = 0;
@@ -53,7 +31,9 @@ SearchInfo Solver::evaluate_guess(const StateBitset& state, int guess_ind, const
     }
 
     return { 1 + (total_cost / state.count()), max_height + 1 };
-}
+} // TODO: If I can make solve_state clean enough, it's probably cleanest to have it all in solve_state
+
+// -- Private Primary --
 
 SearchInfo Solver::solve_state(const StateBitset& state, const GuessBitset& remaining_guesses, int depth) {
     stats.nodes_visited++;
@@ -68,64 +48,22 @@ SearchInfo Solver::solve_state(const StateBitset& state, const GuessBitset& rema
 
     GuessBitset useful_guesses = prune_actions(state, remaining_guesses);
 
-    double global_best_cost = 1000; // Across all tasks
+    double global_best_cost = 1000; // Across all tasks // TODO: Change names
     int global_max_subtree = 1000;
     int global_best_guess = -1; // Across all tasks
 
     std::vector<int> guess_inds;
     guess_inds.reserve(useful_guesses.count()); // TODO: See if faster to do NUM_GUESSES
     for (int g = 0; g < NUM_GUESSES; ++g)
-        if (useful_guesses.test(g)) guess_inds.push_back(g);
+        if (useful_guesses.test(g)) guess_inds.push_back(g); // TODO: Replace with generalized
 
-    if (active_count > 50) {
-        // Using Task Parallel
-        int total_guesses = remaining_guesses.size();
+    for (int g : guess_inds) {
+        SearchInfo res = evaluate_guess(state, g, useful_guesses, depth + 1);
 
-        for (int i = 0; i < total_guesses; i += CHUNK_SIZE) {
-            // Create a task for this chunk of guesses
-            #pragma omp task shared(guess_inds, global_best_cost, global_best_guess, state, useful_guesses)
-            {
-                double local_best_cost = 1000;
-                int local_max_subtree = 1000;
-                int local_best_guess = -1;
- 
-                int end = std::min(i + CHUNK_SIZE, total_guesses);
-                for (int j = i; j < end; ++j) {
-                    int g = guess_inds[j];
-
-                    SearchInfo res = evaluate_guess(state, g, useful_guesses, depth + 1);
-
-                    if (res.expected_cost < local_best_cost) {
-                        local_best_cost = res.expected_cost;
-                        local_max_subtree = res.max_height;
-                        local_best_guess = g;
-                    }
-                }
-
-                // Rejoin local costs to the global one
-                #pragma omp critical
-                {
-                    if (local_best_cost < global_best_cost) {
-                        global_best_cost = local_best_cost;
-                        global_max_subtree = local_max_subtree;
-                        global_best_guess = local_best_guess;
-                    }
-                }
-            }
-        }
-        // Parent waits here and does tasks
-        #pragma omp taskwait
-    }
-    else {
-        // Avoiding task overhead, running serial
-        for (int g : guess_inds) {
-            SearchInfo res = evaluate_guess(state, g, useful_guesses, depth + 1);
-
-            if (res.expected_cost < global_best_cost) {
-                global_best_cost = res.expected_cost;
-                global_max_subtree = res.max_height;
-                global_best_guess = g;
-            }
+        if (res.expected_cost < global_best_cost) {
+            global_best_cost = res.expected_cost;
+            global_max_subtree = res.max_height;
+            global_best_guess = g;
         }
     }
 

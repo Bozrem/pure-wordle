@@ -1,9 +1,17 @@
 #include "MemoizationTable.hpp"
 #include "Solver.hpp"
+#include "Types.hpp"
 #include "Wordle.hpp"
 #include "Statistics.hpp"
 
+#include <chrono>
 #include <iostream>
+
+struct RunState {
+    int next_guess_index = 0;
+    double global_min = 1000; // Just start high
+    int best_index = -1; // None yet
+};
 
 int main() {
     // TODO: Add config
@@ -11,36 +19,51 @@ int main() {
     Wordle game("data/answers_small.txt", "data/guesses.txt");
 
     std::cout << "Building Wordle LUT...\n";
-    game.build_lut(); // TODO: This should be in MemoizationTable for checkpointing
-    std::cout << "Finished building the Wordle LUT\n";
+    game.build_lut();
+    std::cout << "Finished building Wordle LUT\n";
 
     MemoizationTable cache;
-    Solver solver(game, cache);
+    Solver solver(game, cache); // Solvers have nothing but refs to game and cache, what is advantage of thread-local?
 
-    double global_min = 1000;
-    int best_index = -1;
+    RunState state;
+    // TODO: Checkpoint recovery here
 
-    for (int i = 0; i < NUM_GUESSES; ++i) {
-        // Hand off to solver
-        double cost = solver.evaluate_opener(i);
+    std::atomic<int> ticket_counter {state.next_guess_index};
 
-        std::cout << "Computed " << game.get_guess_str(i) << " at a cost of " << cost;
+    // auto last_checkpoint_ts = std::chrono::steady_clock::now(); // TODO: Checkpointing
+    std::mutex save_mutex;
 
-        if (cost < global_min) {
-            global_min = cost;
-            best_index = i;
-            std::cout << "\t[NEW BEST!]";
+    // These set both to all being possible
+    const StateBitset root_state = ~StateBitset();      // Default constructor is all 0. Flip it
+    const GuessBitset root_guesses = ~GuessBitset();
+
+    #pragma omp parallel
+    {
+        while (true) {
+            int guess_ind = ticket_counter.fetch_add(1);
+            if (guess_ind >= NUM_GUESSES) break; // This only breaks for THIS thread right?
+
+            SearchInfo res = solver.evaluate_guess(root_state, guess_ind, root_guesses, 1); // This should be 1, and not 0 right?
+ 
+            #pragma omp critical
+            {
+                std::cout << "Solved " << game.get_guess_str(guess_ind) << " to " << res.expected_cost;
+                if (res.expected_cost < state.global_min) {
+                    state.global_min = res.expected_cost;
+                    state.best_index = guess_ind;
+                    std::cout << "\t[NEW BEST]";
+                }
+
+                std::cout << '\n';
+            }
+
+            // TODO: Checkpoint logic
+            // Check the clock, grab mutex, then call MemoizationTable.dump or something
+            // MemoizationTable should have a shared mutex that effectively pauses all workers during a checkpoint
         }
-
-        std::cout << std::endl;
-
-        if (i % 5 == 0) stats.print();
-
-        // TODO: Add checkpointing
-        // TODO: Add better statistics
-        // TODO: Add progress bar / gui
     }
 
-    std::cout << "\n\nComputation Complete! Best opener is " << game.get_guess_str(best_index) << " at " << global_min << " expected guesses\n";
+    std::cout << "\n\nComputation Complete! Best opener is " << game.get_guess_str(state.best_index)
+              << " at " << state.global_min << " expected guesses\n";
     return 0;
 }
