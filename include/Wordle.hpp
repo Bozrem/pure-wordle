@@ -14,12 +14,13 @@ enum class Color : uint8_t {
 
 class Wordle {
 private:
+    const Config& config;
     std::vector<std::string> answers;
     std::vector<std::string> guesses;
     std::vector<uint8_t> pattern_lut;
 
 public:
-    Wordle();
+    Wordle(const Config& c);
     void build_lut();
 
     static Pattern compute_pattern(const std::string& guess, const std::string& target);

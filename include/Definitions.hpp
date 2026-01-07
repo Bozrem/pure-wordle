@@ -29,5 +29,3 @@ struct Config {
     int prune_threshold = 20;
     double fail_cost = 1e9;
 };
-
-extern const Config* g_config;

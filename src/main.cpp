@@ -1,11 +1,11 @@
 #include "MemoizationTable.hpp"
 #include "Solver.hpp"
 #include "Wordle.hpp"
-#include "Statistics.hpp"
+// #include "Statistics.hpp"
 #include "Definitions.hpp"
 
 #include <bitset>
-#include <chrono>
+// #include <chrono>
 #include <iostream>
 
 struct RunState {
@@ -14,24 +14,21 @@ struct RunState {
     int best_index = -1; // None yet
 };
 
-const Config* g_config = nullptr;
-
-Config parse_args(int argc, char** argv) {
+const Config parse_args(int argc, char** argv) {
     return {};
 }
 
 int main(int argc, char** argv) {
-    Config config = parse_args(argc, argv);
-    g_config = new Config(std::move(config));
+    const Config config = parse_args(argc, argv);
+    std::cout << "Parsed Config\n";
 
-    Wordle game;
+    Wordle game(config);
 
-    std::cout << "Building Wordle LUT...\n";
     game.build_lut();
-    std::cout << "Finished building Wordle LUT\n";
+    std::cout << "Build LUT\n";
 
-    MemoizationTable cache;
-    Solver solver(game, cache);
+    MemoizationTable cache(config);
+    Solver solver(config, game, cache);
 
     RunState state;
     // TODO: Checkpoint recovery here
@@ -44,6 +41,8 @@ int main(int argc, char** argv) {
     // These set both to all being possible
     const StateBitset root_state = ~StateBitset();      // Default constructor is all 0. Flip it
     const GuessBitset root_guesses = ~GuessBitset();
+
+    std::cout << "Starting Simulation\n\n";
 
     #pragma omp parallel
     {

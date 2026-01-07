@@ -16,11 +16,12 @@ struct SearchInfo {
 };
 
 class Solver {
+    const Config& config;
     const Wordle& game;
     MemoizationTable& cache;
 
 public:
-    Solver(const Wordle& g, MemoizationTable& cache);
+    Solver(const Config& c, const Wordle& g, MemoizationTable& m);
 
     SearchInfo evaluate_guess(const StateBitset& state, int guess_ind, const GuessBitset& useful_guesses, int depth);
 

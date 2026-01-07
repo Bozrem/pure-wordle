@@ -11,7 +11,6 @@ class MemoizationTableTest : public ::testing::Test {
 protected:
     // 2. Use a static instance for tests. 
     // This is zero-overhead and avoids manual memory management.
-    static Config test_config; 
 
     // 3. Use unique_ptr to delay construction until AFTER config is set
     std::unique_ptr<MemoizationTable> table;
@@ -22,10 +21,10 @@ protected:
     void SetUp() override {
         // Point the global ptr to our local test config
         // You can modify test_config here if specific tests need different settings
-        g_config = &test_config;
 
         // Now safe to construct the table
-        table = std::make_unique<MemoizationTable>();
+        Config conf = {}; // Default config
+        table = std::make_unique<MemoizationTable>(conf);
 
         // Arbitrary distinct states
         state_A.set(0);
@@ -37,9 +36,6 @@ protected:
         g_config = nullptr;
     }
 };
-
-// Define the static member storage
-Config MemoizationTableTest::test_config;
 
 // Basic Agnostic Storage
 // If we insert a clean value, then we should be able to get it from any from that or above

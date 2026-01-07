@@ -4,7 +4,7 @@
 #include <stdexcept>
 #include <string>
 
-Wordle::Wordle() {
+Wordle::Wordle(const Config& c) : config(c) {
     std::fstream answer_file(ANSWERS_PATH, std::ios::in);
     std::fstream guess_file(GUESSES_PATH, std::ios::in);
 

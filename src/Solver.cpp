@@ -5,7 +5,7 @@
 
 #include <omp.h>
 
-Solver::Solver(const Wordle& g, MemoizationTable& cache) : game(g), cache(cache) {}
+Solver::Solver(const Config& c, const Wordle& g, MemoizationTable& m) : config(c), game(g), cache(m) {}
 
 // -- Public --
 
@@ -37,7 +37,7 @@ std::array<int, NUM_PATTERNS> pattern_count = {0};
 SearchInfo Solver::solve_state(const StateBitset& state, const GuessBitset& remaining_guesses, int depth) {
     // stats.nodes_visited++;
 
-    if (depth > 6) return { g_config->fail_cost, 0 };     // Fail case
+    if (depth > 6) return { config.fail_cost, 0 };     // Fail case
     int active_count = state.count();
     if (active_count == 1) return { 1.0, 1 };  // 1 option left case
     if (active_count == 0) return { 0.0, 0 };  // Got lucky and guessed right
