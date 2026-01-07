@@ -35,9 +35,9 @@ FetchContent_MakeAvailable(phmap)
 add_library(WordleCore
     src/Solver.cpp
     src/Wordle.cpp
+    include/Definitions.hpp
     include/MemoizationTable.hpp
     include/Solver.hpp
-    include/Types.hpp
     include/Wordle.hpp
 )
 

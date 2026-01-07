@@ -2,12 +2,9 @@
 
 #pragma once
 
-#include "Types.hpp"
 #include "Wordle.hpp"
+#include "Definitions.hpp"
 #include "MemoizationTable.hpp"
-
-constexpr int PRUNE_THRESHOLD = 20; // TODO: Add these to a config obj
-constexpr double FAIL_COST = 1e9;
 
 struct SearchInfo {
     double expected_cost;

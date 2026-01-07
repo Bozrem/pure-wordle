@@ -1,10 +1,8 @@
 #pragma once
 
-#include "Types.hpp"
+#include "Definitions.hpp"
 #include <vector>
 #include <string>
-
-constexpr int NUM_PATTERNS = 243;
 
 using Pattern = uint8_t;
 
@@ -21,8 +19,7 @@ private:
     std::vector<uint8_t> pattern_lut;
 
 public:
-    Wordle(const std::string& answers_path, const std::string& guesses_path);
-
+    Wordle();
     void build_lut();
 
     static Pattern compute_pattern(const std::string& guess, const std::string& target);

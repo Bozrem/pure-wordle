@@ -1,9 +1,10 @@
 #include "MemoizationTable.hpp"
 #include "Solver.hpp"
-#include "Types.hpp"
 #include "Wordle.hpp"
 #include "Statistics.hpp"
+#include "Definitions.hpp"
 
+#include <bitset>
 #include <chrono>
 #include <iostream>
 
@@ -13,17 +14,24 @@ struct RunState {
     int best_index = -1; // None yet
 };
 
-int main() {
-    // TODO: Add config
+const Config* g_config = nullptr;
 
-    Wordle game("data/answers_small.txt", "data/guesses.txt");
+Config parse_args(int argc, char** argv) {
+    return {};
+}
+
+int main(int argc, char** argv) {
+    Config config = parse_args(argc, argv);
+    g_config = new Config(std::move(config));
+
+    Wordle game;
 
     std::cout << "Building Wordle LUT...\n";
     game.build_lut();
     std::cout << "Finished building Wordle LUT\n";
 
     MemoizationTable cache;
-    Solver solver(game, cache); // TODO: Investigate Thread-local advantage
+    Solver solver(game, cache);
 
     RunState state;
     // TODO: Checkpoint recovery here

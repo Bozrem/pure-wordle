@@ -2,7 +2,6 @@
 #include "MemoizationTable.hpp"
 // #include "Statistics.hpp"
 #include "Wordle.hpp"
-#include "Types.hpp"
 
 #include <omp.h>
 
@@ -38,11 +37,10 @@ std::array<int, NUM_PATTERNS> pattern_count = {0};
 SearchInfo Solver::solve_state(const StateBitset& state, const GuessBitset& remaining_guesses, int depth) {
     // stats.nodes_visited++;
 
-    if (depth > 6) return { FAIL_COST, 0 };     // Fail case
+    if (depth > 6) return { g_config->fail_cost, 0 };     // Fail case
     int active_count = state.count();
     if (active_count == 1) return { 1.0, 1 };  // 1 option left case
-    // TODO: Check if this properly treats guessing the correct answer
-    // Need to do some testing on these functions with the expected numbers I do on paper
+    if (active_count == 0) return { 0.0, 0 };  // Got lucky and guessed right
  
     if (auto entry = cache.get(state, depth)) return { entry->expected_guesses, entry->height };
 
@@ -75,6 +73,8 @@ SearchInfo Solver::solve_state(const StateBitset& state, const GuessBitset& rema
 GuessBitset Solver::prune_actions(const StateBitset& state, const GuessBitset& curr_guesses) {
     //stats.prune_function_calls++;
     int active_count = state.count();
+
+    // TODO: Experiment with pruning threshold again
 
     static thread_local std::vector<std::pair<std::string, int>> candidates;
     candidates.clear();

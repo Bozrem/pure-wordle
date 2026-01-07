@@ -1,5 +1,5 @@
 #pragma once
-#include "Types.hpp"
+#include "Definitions.hpp"
 #include "Statistics.hpp"
 #include <parallel_hashmap/phmap.h>
 #include <optional>
@@ -35,8 +35,8 @@ public:
     };
 
     MemoizationTable() {
-        agnostic_map.reserve(1000000); // TODO: Add to config and play with values
-        specific_map.reserve(1000000);
+        agnostic_map.reserve(g_config->agnostic_reserve); // TODO: Add to config and play with values
+        specific_map.reserve(g_config->specific_reserve);
     }
 
     std::optional<SearchResult> get(const StateBitset& state, int depth) {

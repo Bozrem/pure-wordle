@@ -1,12 +1,12 @@
 #include "Wordle.hpp"
-#include "Types.hpp"
+#include "Definitions.hpp"
 #include <fstream>
 #include <stdexcept>
 #include <string>
 
-Wordle::Wordle(const std::string& answers_path, const std::string& guesses_path) {
-    std::fstream answer_file(answers_path, std::ios::in);
-    std::fstream guess_file(guesses_path, std::ios::in);
+Wordle::Wordle() {
+    std::fstream answer_file(ANSWERS_PATH, std::ios::in);
+    std::fstream guess_file(GUESSES_PATH, std::ios::in);
 
     answers.reserve(NUM_ANSWERS);
     guesses.reserve(NUM_GUESSES);
@@ -22,8 +22,6 @@ Wordle::Wordle(const std::string& answers_path, const std::string& guesses_path)
         throw std::runtime_error("Guesses size mismatch: expected " + std::to_string(NUM_GUESSES) + ", got " + std::to_string(guesses.size()));
 
     pattern_lut.resize(NUM_GUESSES * NUM_ANSWERS); // Inits all to 0
-
-    // TODO: See if we can do variable NUM_ANSWERS & NUM_GUESSES
 }
 
 void Wordle::build_lut() {
@@ -33,7 +31,7 @@ void Wordle::build_lut() {
             pattern_lut[g * NUM_ANSWERS + a] = compute_pattern(guesses[g], answers[a]); // Shouldn't get out of bounds
         }
     }
-}
+} // TODO: Test LUT
 
 Pattern Wordle::compute_pattern(const std::string& guess, const std::string& target) {
     std::array<Color, 5> colors = {Color::Gray, Color::Gray, Color::Gray, Color::Gray, Color::Gray};
