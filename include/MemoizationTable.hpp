@@ -26,16 +26,10 @@
 
 class MemoizationTable {
 public:
-    struct SearchResult {
-        double expected_guesses;
-        int best_guess_index;
-        int height;
-    };
-
     MemoizationTable(const Config& c);
 
     std::optional<SearchResult> get(const StateBitset& state, int depth);
-    void insert(const StateBitset& state, int depth, double val, int guess_index, int subtree_height);
+    void insert(const StateBitset& state, int depth, const SearchResult& res);
 private:
     // -- Agnostic Map Structs --
 

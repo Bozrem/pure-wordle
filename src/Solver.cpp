@@ -1,4 +1,5 @@
 #include "Solver.hpp"
+#include "Definitions.hpp"
 #include "MemoizationTable.hpp"
 // #include "Statistics.hpp"
 #include "Wordle.hpp"
@@ -9,9 +10,8 @@ Solver::Solver(const Config& c, const Wordle& g, MemoizationTable& m) : config(c
 
 // -- Public --
 
-SearchInfo Solver::evaluate_guess(const StateBitset& state, int guess_ind, const GuessBitset& useful_guesses, int depth) {
-std::array<int, NUM_PATTERNS> pattern_count = {0};
-
+SearchResult Solver::evaluate_guess(const StateBitset& state, int guess_ind, const GuessBitset& useful_guesses, int depth) {
+    std::array<int, NUM_PATTERNS> pattern_count = {0};
     for (int a = 0; a < NUM_ANSWERS; ++a) {
         if (!state.test(a)) continue; // Answer not possible in this state
         pattern_count[game.get_pattern_lookup(guess_ind, a)]++;
@@ -24,50 +24,53 @@ std::array<int, NUM_PATTERNS> pattern_count = {0};
         if (pattern_count[p] == 0) continue;
 
         StateBitset new_state = game.prune_state(state, guess_ind, p);
-        SearchInfo new_state_res = solve_state(new_state, useful_guesses, depth + 1);
+
+        // Recursive
+        SearchResult new_state_res = solve_state(new_state, useful_guesses, depth + 1);
+
         total_cost += new_state_res.expected_cost * pattern_count[p];
         max_height = std::max(max_height, new_state_res.max_height);
     }
 
-    return { 1 + (total_cost / state.count()), max_height + 1 };
+    // Result for THIS guess, so the guess_ind is just this
+    return { 1 + (total_cost / state.count()), guess_ind, max_height + 1 };
 } // TODO: If I can make solve_state clean enough, it's probably cleanest to have it all in solve_state
 
 // -- Private Primary --
 
-SearchInfo Solver::solve_state(const StateBitset& state, const GuessBitset& remaining_guesses, int depth) {
+SearchResult Solver::solve_state(const StateBitset& state, const GuessBitset& remaining_guesses, int depth) {
     // stats.nodes_visited++;
 
-    if (depth > 6) return { config.fail_cost, 0 };     // Fail case
+    if (depth > 6) return { config.fail_cost, -1, 0 }; 
     int active_count = state.count();
-    if (active_count == 1) return { 1.0, 1 };  // 1 option left case
-    if (active_count == 0) return { 0.0, 0 };  // Got lucky and guessed right
+    if (active_count == 1) return { 1.0, -1, 1 }; // -1 because no guess needed
+    if (active_count == 0) return { 0.0, -1, 0 };
  
-    if (auto entry = cache.get(state, depth)) return { entry->expected_guesses, entry->height };
+    // Cache Check
+    if (auto entry = cache.get(state, depth)) return *entry;
 
     GuessBitset useful_guesses = prune_actions(state, remaining_guesses);
 
-    double global_best_cost = 1000; // Across all tasks // TODO: Change names
-    int global_max_subtree = 1000;
-    int global_best_guess = -1; // Across all tasks
+    // Track the best result found in this loop
+    SearchResult best_res { 1000.0, -1, 1000 }; 
 
     std::vector<int> guess_inds;
-    guess_inds.reserve(useful_guesses.count()); // TODO: See if faster to do NUM_GUESSES
+    guess_inds.reserve(useful_guesses.count());
     for (int g = 0; g < NUM_GUESSES; ++g)
-        if (useful_guesses.test(g)) guess_inds.push_back(g); // TODO: Replace with generalized
+        if (useful_guesses.test(g)) guess_inds.push_back(g);
 
     for (int g : guess_inds) {
-        SearchInfo res = evaluate_guess(state, g, useful_guesses, depth + 1);
+        // Recursive
+        SearchResult res = evaluate_guess(state, g, useful_guesses, depth + 1);
 
-        if (res.expected_cost < global_best_cost) {
-            global_best_cost = res.expected_cost;
-            global_max_subtree = res.max_height;
-            global_best_guess = g;
-        }
+        if (res.expected_cost < best_res.expected_cost)
+            best_res = res;
     }
 
-    cache.insert(state, depth, global_best_cost, global_best_guess, global_max_subtree);
+    // Cache save
+    cache.insert(state, depth, best_res);
 
-    return { global_best_cost, global_max_subtree };
+    return best_res;
 }
 
 GuessBitset Solver::prune_actions(const StateBitset& state, const GuessBitset& curr_guesses) {

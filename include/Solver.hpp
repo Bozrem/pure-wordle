@@ -6,15 +6,6 @@
 #include "Definitions.hpp"
 #include "MemoizationTable.hpp"
 
-struct SearchInfo {
-    double expected_cost;
-    int max_height;
-
-    bool operator<(const SearchInfo& other) const {
-        return expected_cost < other.expected_cost;
-    }
-};
-
 class Solver {
     const Config& config;
     const Wordle& game;
@@ -23,11 +14,11 @@ class Solver {
 public:
     Solver(const Config& c, const Wordle& g, MemoizationTable& m);
 
-    SearchInfo evaluate_guess(const StateBitset& state, int guess_ind, const GuessBitset& useful_guesses, int depth);
+    SearchResult evaluate_guess(const StateBitset& state, int guess_ind, const GuessBitset& useful_guesses, int depth);
 
 private:
     // The actual internal recursion
-    SearchInfo solve_state(const StateBitset& state, const GuessBitset& useful_guesses, int depth);
+    SearchResult solve_state(const StateBitset& state, const GuessBitset& useful_guesses, int depth);
 
     GuessBitset prune_actions(const StateBitset& state, const GuessBitset& curr_guesses);
 

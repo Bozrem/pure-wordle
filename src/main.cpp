@@ -52,8 +52,8 @@ int main(int argc, char** argv) {
             int guess_ind = ticket_counter.fetch_add(1);
             if (guess_ind >= NUM_GUESSES) break; // This only breaks for THIS thread right?
 
-            SearchInfo res = solver.evaluate_guess(root_state, guess_ind, root_guesses, 1); // This should be 1, and not 0 right?
- 
+            SearchResult res = solver.evaluate_guess(root_state, guess_ind, root_guesses, 1);
+
             #pragma omp critical
             {
                 std::cout << "Solved " << game.get_guess_str(guess_ind) << " to " << res.expected_cost;
@@ -62,7 +62,6 @@ int main(int argc, char** argv) {
                     state.best_index = guess_ind;
                     std::cout << "\t[NEW BEST]";
                 }
-
                 std::cout << '\n';
             }
 

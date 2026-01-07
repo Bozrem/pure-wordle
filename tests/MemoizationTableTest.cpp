@@ -4,9 +4,6 @@
 #include "MemoizationTable.hpp"
 #include "Definitions.hpp"
 
-// 1. Define storage for the global pointer (required because main.cpp isn't linked)
-const Config* g_config = nullptr;
-
 class MemoizationTableTest : public ::testing::Test {
 protected:
     // 2. Use a static instance for tests. 
@@ -30,37 +27,32 @@ protected:
         state_A.set(0);
         state_B.set(1);
     }
-
-    void TearDown() override {
-        // Good practice to reset, though not strictly necessary if tests are isolated
-        g_config = nullptr;
-    }
 };
 
 // Basic Agnostic Storage
 // If we insert a clean value, then we should be able to get it from any from that or above
 TEST_F(MemoizationTableTest, AgnosticRetrievalMatches) {
     // Insert at Depth 4, Height 2 (Ends at 6). This is CLEAN.
-    table->insert(state_A, 4, 3.5, 10, 2);
+    table->insert(state_A, 4, SearchResult{3.5, 10, 2});
 
     // Retrieve at Depth 4. Should be a hit
     auto result = table->get(state_A, 4);
     ASSERT_TRUE(result.has_value());
-    EXPECT_DOUBLE_EQ(result->expected_guesses, 3.5);
-    EXPECT_EQ(result->height, 2);
+    EXPECT_DOUBLE_EQ(result->expected_cost, 3.5); // Field renamed from expected_guesses
+    EXPECT_EQ(result->max_height, 2);             // Field renamed from height
 
     // Retrieve at Depth 2 (Shallower). 2 + 2 = 4 <= 6. Should be a hit
     auto shallow_result = table->get(state_A, 2);
     ASSERT_TRUE(shallow_result.has_value());
-    EXPECT_DOUBLE_EQ(shallow_result->expected_guesses, 3.5);
-    EXPECT_EQ(result->height, 2);
+    EXPECT_DOUBLE_EQ(shallow_result->expected_cost, 3.5);
+    EXPECT_EQ(shallow_result->max_height, 2);
 }
 
 // Agnostic Depth Limit
 // If we insert a clean value, but try and retrieve it from one that would go beyond 6, it should not hit
 TEST_F(MemoizationTableTest, AgnosticRetrievalRespectsBounds) {
     // Insert at Depth 1, Height 4 (Ends at 5). CLEAN.
-    table->insert(state_A, 1, 4.0, 10, 4);
+    table->insert(state_A, 1, SearchResult{4.0, 10, 4});
 
     // Retrieve at Depth 3. (3 + 4 = 7). > 6. Should MISS.
     // The pure math is valid, but we can't use it because we don't have enough moves left.
@@ -72,12 +64,12 @@ TEST_F(MemoizationTableTest, AgnosticRetrievalRespectsBounds) {
 // If we insert a value that hit the wall, it should go to Specific map.
 TEST_F(MemoizationTableTest, SpecificStorageConstraints) {
     // Insert at Depth 5, Height 2 (Ends at 7). TAINTED/FAIL.
-    table->insert(state_A, 5, 1e9, 20, 2);
+    table->insert(state_A, 5, SearchResult{1e9, 20, 2});
 
     // Retrieve at exact same depth. Should HIT.
     auto result = table->get(state_A, 5);
     ASSERT_TRUE(result.has_value());
-    EXPECT_DOUBLE_EQ(result->expected_guesses, 1e9);
+    EXPECT_DOUBLE_EQ(result->expected_cost, 1e9);
     
     // Retrieve at different depth (Depth 4). Should MISS.
     // (Specific entries are not reusable)
@@ -91,7 +83,7 @@ TEST_F(MemoizationTableTest, SpecificEntryPropagatesTaint) {
     // Insert at Depth 6. 
     // This implies it failed at 7. Real height 1.
     // 6 + 1 = 7 (>6). This is TAINTED.
-    table->insert(state_B, 6, 1e9, 99, 1);
+    table->insert(state_B, 6, SearchResult{1e9, 99, 1});
 
     // Retrieve at Depth 6.
     auto result = table->get(state_B, 6);
@@ -102,8 +94,8 @@ TEST_F(MemoizationTableTest, SpecificEntryPropagatesTaint) {
     // If we return 7 - depth (1), a parent at depth 5 adds 1 -> 2. Total 7. (Knows it's tainted).
     
     // We expect the height to be at least 1 (7 - 6).
-    EXPECT_GE(result->height, 1); 
-    EXPECT_EQ(result->height, 7 - 6); 
+    EXPECT_GE(result->max_height, 1); 
+    EXPECT_EQ(result->max_height, 7 - 6); 
 }
 
 // 5. Overwrite Behavior
@@ -111,22 +103,22 @@ TEST_F(MemoizationTableTest, SpecificEntryPropagatesTaint) {
 // Actually, with dual maps, they exist in parallel. We prefer Agnostic.
 TEST_F(MemoizationTableTest, AgnosticPreferredOverSpecific) {
     // 1. Insert Tainted version (e.g. found via deep search that hit limit)
-    table->insert(state_A, 5, 1e9, 0, 2);
+    table->insert(state_A, 5, SearchResult{1e9, 0, 2});
 
     // 2. Insert Clean version (e.g. found via shallow search that solved it)
     // Note: State A is same. 
-    table->insert(state_A, 2, 3.0, 5, 2); 
+    table->insert(state_A, 2, SearchResult{3.0, 5, 2}); 
 
     // 3. Get at Depth 5. 
     // Agnostic check: Depth 5 + Height 2 = 7. Too deep. Agnostic ignored.
     // Specific check: Hit.
     auto res_deep = table->get(state_A, 5);
-    EXPECT_DOUBLE_EQ(res_deep->expected_guesses, 1e9);
+    EXPECT_DOUBLE_EQ(res_deep->expected_cost, 1e9);
 
     // 4. Get at Depth 2.
     // Agnostic check: Depth 2 + Height 2 = 4. Valid.
     auto res_shallow = table->get(state_A, 2);
-    EXPECT_DOUBLE_EQ(res_shallow->expected_guesses, 3.0);
+    EXPECT_DOUBLE_EQ(res_shallow->expected_cost, 3.0);
 }
 
 // 6. Boundary Edge Case: The "Perfect Fit"
@@ -134,12 +126,12 @@ TEST_F(MemoizationTableTest, AgnosticPreferredOverSpecific) {
 TEST_F(MemoizationTableTest, ExactBoundaryFit) {
     // Current Depth 1. Tree Height 5. Total = 6. 
     // This is the limit of "Clean". Should go to Agnostic.
-    table->insert(state_A, 1, 3.5, 10, 5);
+    table->insert(state_A, 1, SearchResult{3.5, 10, 5});
 
     // Retrieve at Depth 1: Should HIT Agnostic.
     auto res1 = table->get(state_A, 1);
     ASSERT_TRUE(res1.has_value());
-    EXPECT_EQ(res1->height, 5);
+    EXPECT_EQ(res1->max_height, 5);
 
     // Retrieve at Depth 2: 2 + 5 = 7 (Too deep). Should MISS Agnostic.
     auto res2 = table->get(state_A, 2);
@@ -151,7 +143,7 @@ TEST_F(MemoizationTableTest, TaintedValueIsNotAgnostic) {
     // Scenario: We are at Depth 1. The solution takes 6 more steps.
     // Total Depth = 1 + 6 = 7. (Fail).
     // We insert this. It should go to Specific, NOT Agnostic.
-    table->insert(state_A, 1, 1e9, 10, 6);
+    table->insert(state_A, 1, SearchResult{1e9, 10, 6});
 
     // Try to retrieve at Depth 0.
     // If this were stored in Agnostic, it would have height 6.
@@ -166,27 +158,27 @@ TEST_F(MemoizationTableTest, TaintedValueIsNotAgnostic) {
 // 8. State Collision Integrity
 // Ensure two different states with similar properties don't overwrite each other.
 TEST_F(MemoizationTableTest, DistinctStatesDoNotCollide) {
-    table->insert(state_A, 3, 10.0, 1, 2);
-    table->insert(state_B, 3, 20.0, 2, 2);
+    table->insert(state_A, 3, SearchResult{10.0, 1, 2});
+    table->insert(state_B, 3, SearchResult{20.0, 2, 2});
 
     auto resA = table->get(state_A, 3);
     auto resB = table->get(state_B, 3);
 
     ASSERT_TRUE(resA.has_value());
     ASSERT_TRUE(resB.has_value());
-    EXPECT_DOUBLE_EQ(resA->expected_guesses, 10.0);
-    EXPECT_DOUBLE_EQ(resB->expected_guesses, 20.0);
+    EXPECT_DOUBLE_EQ(resA->expected_cost, 10.0);
+    EXPECT_DOUBLE_EQ(resB->expected_cost, 20.0);
 }
 
 // 9. Fail Value Integrity
 // Ensure the 1e9 cost doesn't get normalized or modified strangely.
 TEST_F(MemoizationTableTest, FailCostPersists) {
     double huge_cost = 1e9;
-    table->insert(state_A, 6, huge_cost, -1, 1);
+    table->insert(state_A, 6, SearchResult{huge_cost, -1, 1});
 
     auto res = table->get(state_A, 6);
     ASSERT_TRUE(res.has_value());
-    EXPECT_DOUBLE_EQ(res->expected_guesses, 1e9);
+    EXPECT_DOUBLE_EQ(res->expected_cost, 1e9);
 }
 
 // 10. Update Logic (Optimization check)
@@ -198,21 +190,21 @@ TEST_F(MemoizationTableTest, FailCostPersists) {
 // PHMAP try_emplace does NOT overwrite if key exists.
 TEST_F(MemoizationTableTest, DeterministicInsertPolicy) {
     // Insert initial value
-    table->insert(state_A, 2, 4.0, 5, 2);
+    table->insert(state_A, 2, SearchResult{4.0, 5, 2});
 
     // Try to insert a "different" value for same state/depth
     // (Simulating a bug in solver or non-deterministic behavior)
-    table->insert(state_A, 2, 99.0, 99, 2);
+    table->insert(state_A, 2, SearchResult{99.0, 99, 2});
 
     auto res = table->get(state_A, 2);
     // Should still be the first value (try_emplace standard behavior)
-    EXPECT_DOUBLE_EQ(res->expected_guesses, 4.0);
+    EXPECT_DOUBLE_EQ(res->expected_cost, 4.0);
 }
 
 // 11. Ensure we get the "barely" tained value
 TEST_F(MemoizationTableTest, SpecificRetrievalPropagatesOverflow) {
     // Scenario: Insert same tainted value at Depth 1 (Height 6).
-    table->insert(state_A, 1, 1e9, 10, 6);
+    table->insert(state_A, 1, SearchResult{1e9, 10, 6});
 
     // Retrieve at exact same Depth 1 (Specific Hit).
     auto res = table->get(state_A, 1);
@@ -225,12 +217,6 @@ TEST_F(MemoizationTableTest, SpecificRetrievalPropagatesOverflow) {
     // The formula is (7 - depth) = 6.
     int expected_height = 7 - 1; 
  
-    EXPECT_EQ(res->height, expected_height) 
+    EXPECT_EQ(res->max_height, expected_height) 
         << "Height should be (7-depth) to ensure parent overflows limit";
-
-    // Verification of Parent Logic:
-    // Parent Depth = 0.
-    // Parent Height = 1 (step to child) + child_height (6).
-    // Parent Total = 0 + 7 = 7.
-    // 7 > 6. Parent correctly detects overflow.
 }

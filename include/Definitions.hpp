@@ -16,6 +16,17 @@ constexpr const char* GUESSES_PATH = "data/guesses.txt";
 using StateBitset = std::bitset<NUM_ANSWERS>;
 using GuessBitset = std::bitset<NUM_GUESSES>;
 
+struct SearchResult {
+    double expected_cost;
+    int best_guess_index; // -1 if not applicable (e.g. leaf node)
+    int max_height;       // Depth of the subtree relative to this node
+
+    // Helper for comparisons if you switch to std::min_element later
+    bool operator<(const SearchResult& other) const {
+        return expected_cost < other.expected_cost;
+    }
+};
+
 struct Config {
     std::string answers_path = "data/answers_small.txt";
     std::string guesses_path = "data/guesses.txt";
