@@ -12,10 +12,9 @@ Solver::Solver(const Config& c, const Wordle& g, MemoizationTable& m) : config(c
 
 SearchResult Solver::evaluate_guess(const StateBitset& state, int guess_ind, const GuessBitset& useful_guesses, int depth) {
     std::array<int, NUM_PATTERNS> pattern_count = {0};
-    for (int a = 0; a < NUM_ANSWERS; ++a) {
-        if (!state.test(a)) continue; // Answer not possible in this state
-        pattern_count[game.get_pattern_lookup(guess_ind, a)]++;
-    } // TODO: Replace with a generalized pattern counter
+    for_each_active_bit(state, [&](int answer_idx) {
+        pattern_count[game.get_pattern_lookup(guess_ind, answer_idx)]++;
+    });
 
     double total_cost = 0.0;
     int max_height = 0;
@@ -73,69 +72,89 @@ SearchResult Solver::solve_state(const StateBitset& state, const GuessBitset& re
     return best_res;
 }
 
+// Simple FNV-1a style hash combiner
+inline size_t combine_hash(size_t hash, uint8_t value) {
+    return (hash ^ value) * 1099511628211ULL;
+}
+
 GuessBitset Solver::prune_actions(const StateBitset& state, const GuessBitset& curr_guesses) {
-    //stats.prune_function_calls++;
-    int active_count = state.count();
+    static thread_local std::vector<int> active_indices;
+    active_indices.clear();
+    active_indices.reserve(state.count()); 
 
-    // TODO: Experiment with pruning threshold again
+    for_each_active_bit(state, [&](int i) {
+        active_indices.push_back(i);
+    });
 
-    static thread_local std::vector<std::pair<std::string, int>> candidates;
+
+    struct Candidate {
+        size_t signature_hash;
+        int guess_index;
+    };
+
+    static thread_local std::vector<Candidate> candidates;
     candidates.clear();
-    candidates.reserve(NUM_GUESSES); // Reserve max once
+    candidates.reserve(NUM_GUESSES);
 
-    //stats.total_actions_checked += curr_guesses.count();
-
-    // Build a list of active inds to avoid 2315 bitset pass each time in the inner
-    std::vector<int> active_indices;
-    active_indices.reserve(active_count);
-    for(int i=0; i<NUM_ANSWERS; ++i) {
-        if(state.test(i)) active_indices.push_back(i);
-    }
 
     for (int g = 0; g < NUM_GUESSES; ++g) {
         if (!curr_guesses.test(g)) continue;
 
-        // Optimized Signature Generation
-        // Instead of string += char, purely reserve space
-        std::string signature; 
-        signature.resize(active_count); 
-
+        size_t hash = 14695981039346656037ULL; // FNV offset basis
         bool all_same = true;
-        Pattern first_p = game.get_pattern_lookup(g, active_indices[0]);
 
-        for (int i = 0; i < active_count; ++i) {
+        // First pattern for uselessness check
+        Pattern first_p = game.get_pattern_lookup(g, active_indices[0]);
+        hash = combine_hash(hash, first_p);
+
+        // Compute Signature
+        for (size_t i = 1; i < active_indices.size(); ++i) {
             Pattern p = game.get_pattern_lookup(g, active_indices[i]);
+ 
             if (p != first_p) all_same = false;
-            signature[i] = static_cast<char>(p);
+            hash = combine_hash(hash, p);
         }
 
-        if (all_same) {
-            //stats.useless_pruned++;
+        if (all_same) continue; // Useless guess
+        // TODO: It's useless when all eliminate nothing. Is this equivelent?
+
+        candidates.push_back({hash, g});
+    }
+
+    // Sort the hashes
+    std::sort(candidates.begin(), candidates.end(), 
+        [](const Candidate& a, const Candidate& b) {
+            return a.signature_hash < b.signature_hash;
+        });
+
+    GuessBitset useful_guesses;
+    if (candidates.empty()) return useful_guesses; // TODO: When could this happen?
+
+    // Pass with handling
+    useful_guesses.set(candidates[0].guess_index);
+
+    for (size_t i = 1; i < candidates.size(); ++i) {
+        // If hashes are different, it's definitely a different signature
+        if (candidates[i].signature_hash != candidates[i-1].signature_hash) {
+            useful_guesses.set(candidates[i].guess_index);
             continue;
         }
 
-        // Store candidate
-        candidates.push_back({std::move(signature), g});
-    }
+        // Collision Check
+        bool is_duplicate = true;
+        int g1 = candidates[i].guess_index;
+        int g2 = candidates[i-1].guess_index;
 
-    // Sort to identify dupes
-    std::sort(candidates.begin(), candidates.end(), 
-        [](const auto& a, const auto& b) { return a.first < b.first; });
-
-    GuessBitset useful_guesses;
-    if (!candidates.empty()) {
-        // Always keep first
-        useful_guesses.set(candidates[0].second);
-
-        for (size_t i = 1; i < candidates.size(); ++i) {
-            if (candidates[i].first != candidates[i-1].first) {
-                useful_guesses.set(candidates[i].second); // Only add if not same as last
-            } else {
-                //stats.duplicates_pruned++;
+        for (int answer_idx : active_indices) {
+            if (game.get_pattern_lookup(g1, answer_idx) != game.get_pattern_lookup(g2, answer_idx)) {
+                is_duplicate = false;
+                break;
             }
-        }
+        } // TODO: Explore tradeoff of keeping all in memory from the start and avoiding this
+
+        if (!is_duplicate)
+            useful_guesses.set(candidates[i].guess_index);
     }
 
-    //stats.total_actions_kept += useful_guesses.count();
     return useful_guesses;
 }
