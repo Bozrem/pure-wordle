@@ -14,6 +14,8 @@ struct SolverStats {
     long total_actions_kept = 0;
     long useless_pruned = 0;
     long duplicates_pruned = 0;
+    long memo_inserts = 0;
+    long memo_collisions = 0; // Duplicated work
 
     // Helper to merge another thread's stats into this one
     void operator+=(const SolverStats& other) {
@@ -25,29 +27,31 @@ struct SolverStats {
         total_actions_kept += other.total_actions_kept;
         useless_pruned += other.useless_pruned;
         duplicates_pruned += other.duplicates_pruned;
+        memo_inserts += other.memo_inserts;
+        memo_collisions += other.memo_collisions;
     }
 
     void print() {
         long total_reqs = cache_hits + cache_misses;
         double hit_rate = total_reqs > 0 ? (100.0 * cache_hits / total_reqs) : 0.0;
- 
         long pruned_count = useless_pruned + duplicates_pruned;
         long total_prune_ops = total_actions_checked > 0 ? total_actions_checked : 1;
         double prune_rate = 100.0 * pruned_count / total_prune_ops;
+        double collision_rate = memo_inserts > 0 ? (100.0 * memo_collisions / memo_inserts) : 0.0;
 
         std::cout << "\n=== SOLVER STATISTICS ===\n";
         std::cout << "Nodes Visited:   " << nodes_visited << "\n";
         std::cout << "Cache Hit Rate:  " << std::fixed << std::setprecision(2) << hit_rate << "% (" 
                   << cache_hits << " hits / " << cache_misses << " misses)\n";
         std::cout << "-------------------------\n";
+        std::cout << "Memoization:\n";
+        std::cout << "  - Inserts:     " << memo_inserts << "\n";
+        std::cout << "  - Collisions:  " << memo_collisions << "\n";
+        std::cout << "  - Redundancy:  " << collision_rate << "% (Lower is better)\n";
+        std::cout << "-------------------------\n";
         std::cout << "Pruning Calls:   " << prune_function_calls << "\n";
-        std::cout << "Actions Checked: " << total_actions_checked << "\n";
-        std::cout << "Actions Kept:    " << total_actions_kept << "\n";
-        std::cout << "Prune Rate:      " << prune_rate << "% (Higher is better)\n";
-        std::cout << "  - Useless:     " << useless_pruned << "\n";
-        std::cout << "  - Duplicates:  " << duplicates_pruned << "\n";
-        std::cout << "=========================\n";
-    }
+        std::cout << "Prune Rate:      " << prune_rate << "%\n";
+        std::cout << "=========================\n";    }
 };
 
 // Declare the thread-local instance (each thread gets its own)

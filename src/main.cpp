@@ -70,8 +70,8 @@ int main(int argc, char** argv) {
                 }
                 std::cout << '\n';
 
-                if (ticket_counter % config.stats_print_freq == 0)
-                    g_stats.print();
+                // if (ticket_counter % config.stats_print_freq == 0)
+                //     g_stats.print();
             }
 
             // TODO: Checkpoint logic
