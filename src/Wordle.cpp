@@ -3,6 +3,7 @@
 #include <fstream>
 #include <stdexcept>
 #include <string>
+#include <array>
 
 Wordle::Wordle(const Config& c) : config(c) {
     std::fstream answer_file(ANSWERS_PATH, std::ios::in);

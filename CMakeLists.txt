@@ -51,7 +51,7 @@ if(MSVC)
 else()
     target_compile_options(WordleCore PRIVATE
         -Wall -Wextra
-        -O3 -march=native -funroll-loops
+        -O3 -march=znver2 -funroll-loops
         -g -fno-omit-frame-pointer
     )
 endif()
