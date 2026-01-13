@@ -2,14 +2,14 @@
 A concurrent C++ project to solve [Wordle](https://www.nytimes.com/games/wordle/index.html) with pure Dynamic Programming
 
 ## Status - OPTIMIZING
-Has not been run on the full [Wordle answer set](#notes) yet. Working up to it after many optimizations to not take up too much time on the school cluster
+Has not been run on the full [Wordle answer set](#answer-and-guess-set) yet. Working up to it after many optimizations to not take up too much time on the school cluster
 
 // Add optimization graph here //
 
 ## Algorithm
-The algorithm itself is relatively simple, and hardly deviates from normal Dynamic Programming, hence the "pure" name, as I have a [different project](https://github.com/Bozrem/mcdp-wordle) exploring an alternative algorithm.
+The algorithm itself is a Top-Down Minimax search with memoization. I initially called the repo "pure" Wordle because I have a [different project](https://github.com/Bozrem/mcdp-wordle) exploring an alternative algorithm.
 
-We are doing an expected value search of the full Wordle tree. The results show the amount of additional guesses it would take to solve a game from a given state. For example, `Solved heart to 2.42` indicates that with perfect play, you can beat the game in an average of 1.42 more guesses (since 'heart' counts as 1).
+The results show the expected total guesses in a game in which you start with a specific opener. For example, `Solved heart to 2.42` indicates that with perfect play, you can beat the game in an average of 1.42 more guesses (since 'heart' counts as 1).
 
 From a more Reinforcement Learning perspective, the state is just a list representing all the answers that are still possible given the colors seen in the game, thus making it a Markov state.
 
@@ -20,46 +20,45 @@ The only real deviation from a "pure" DP is that at a depth of 6 it returns imme
 
 ## Optimizations
 ### Bitset
-<span style="color: green;">Status - COMPLETE</span>
-SPEEDUP: Untested
+Status - COMPLETE
+
 Instead of constantly passing around a vector of strings as the state, do a simple std::bitset
 
 ### FastBitset
-<span style="color: red;">Status - TODO</span>
-std::bitset is pretty fast, but by hiding the data it makes it impossible (or at least not recommended) to do SIMD operations. 
+Status - TODO
+
+std::bitset is pretty fast, but by hiding the data it makes it impossible (or at least not recommended) to do SIMD operations.
 
 FastBitset would be a custom class that simply replicates the used methods of std::bitset while making the core data public
 
 ### Action Pruning
-<span style="color: yellow;">Status - PARTIAL</span>
-SPEEDUP: Untested
+Status - PARTIAL
 
 As you go through a game of Wordle, some actions become useless. On the algorithm side, we can optimize this by eliminating useless (Never produces any reduction in the answer bitset) or duplicate (always produces the same subsequent states as another guess) guesses.
 
 This is partial because the implementation needs to be revisited and further tested, but the core code is there.
 
 ### Wordle Lookup Table
-<span style="color: green;">Status - COMPLETE</span>
-SPEEDUP: Untested
+Status - COMPLETE
 
 Instead of replaying Wordle transitions all the time while running the algorithm, or even caching them as we go, it's much quicker just to produce a Lookup Table matrix. This just takes a little bit of time at the start of the run, but it further enables the [SIMD optimization](#prune\_state-simd)
 
-### Random Guesses
-<span style="color: red;">Status - TODO</span>
+### Randomized Work Distribution
+Status - TODO
 
-The current main loop parallelizes over starting guesses (see [Concurrency](#system-design-&-concurrency)) alphabetically, which seems more likely to cause redundant work. Could reduce the 10% redundancy rate for way more cache hits by selecting words that are very different, so it's less likely that two threads want the same state at the same time
+The current main loop parallelizes over starting guesses (see [Concurrency](#system-design)) alphabetically, which seems more likely to cause redundant work. Could reduce the 10% redundancy rate for way more cache hits by selecting words that are very different, so it's less likely that two threads want the same state at the same time
 
 ### Prune\_state SIMD
-<span style="color: red;">Status - TODO</span>
+Status - TODO
 
 Prune\_state compares LUT results to a single set of colors, and is thus a really good candidate for vectorization. The most recent profile showed upwards of 30% of the compute time is in that, so this could be a significant speedup.
 
 ### Builtin Usage
-<span style="color: red;">Status - TODO</span>
+Status - TODO
 
 There are some spots in the Solver that it must go through the whole bitmap. Currently, it uses branching to skip bad ones. Could be much faster with some sort of `find_next_set_bit` instruction.
 
-## System Design & Concurrency
+## System Design
 
 ### Memoization Strategy
 The project initially had it's own concurrent hashmap, but it had performance issues, so the current one uses a public library.
@@ -165,4 +164,4 @@ Most of my work is in cleanup and implementing more [optimizations](#optimizatio
 ### Answer and Guess set
 Before being bought, you could view much of the Wordle source code from the website, including the allowed set of guesses and the set of possible answers. 
 
-After buying Wordle, NYTimes closed off these files, so I technically only have the old sets to work with. If this project gets far enough, I intend to ask NYT for the "true" modern set.
+After buying Wordle, NYTimes closed off these files, so I technically the numbers are not accurate to the NYT version
