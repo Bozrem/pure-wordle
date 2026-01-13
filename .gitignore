@@ -2,6 +2,8 @@ build
 .cache
 todo.txt
 
+perf.*
+
 # Output files
 wordle_*
 
