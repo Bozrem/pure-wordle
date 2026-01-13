@@ -39,4 +39,6 @@ struct Config {
 
     int prune_threshold = 20;
     double fail_cost = 1e9;
+
+    int stats_print_freq = 2000;
 };

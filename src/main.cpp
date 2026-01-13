@@ -1,12 +1,14 @@
 #include "MemoizationTable.hpp"
 #include "Solver.hpp"
 #include "Wordle.hpp"
-// #include "Statistics.hpp"
+#include "Statistics.hpp"
 #include "Definitions.hpp"
 
 #include <bitset>
 // #include <chrono>
 #include <iostream>
+
+SolverStats g_stats;
 
 struct RunState {
     int next_guess_index = 0;
@@ -29,6 +31,7 @@ int main(int argc, char** argv) {
 
     MemoizationTable cache(config);
     Solver solver(config, game, cache);
+    g_stats = SolverStats();
 
     RunState state;
     // TODO: Checkpoint recovery here
@@ -46,16 +49,19 @@ int main(int argc, char** argv) {
 
     #pragma omp parallel
     {
+        t_stats = SolverStats(); // Every thread gets it's own
+
         while (true) {
             // TODO: Optimization to consider, choose random guesses instead of alphabetical
             // Right now, we probably often get cache misses because words are similar, and a different thread is already working on it
             int guess_ind = ticket_counter.fetch_add(1);
-            if (guess_ind >= NUM_GUESSES) break; // This only breaks for THIS thread right?
+            if (guess_ind >= NUM_GUESSES) break;
 
             SearchResult res = solver.evaluate_guess(root_state, guess_ind, root_guesses, 1);
 
             #pragma omp critical
             {
+                g_stats += t_stats;
                 std::cout << "Solved " << game.get_guess_str(guess_ind) << " to " << res.expected_cost;
                 if (res.expected_cost < state.global_min) {
                     state.global_min = res.expected_cost;
@@ -63,6 +69,9 @@ int main(int argc, char** argv) {
                     std::cout << "\t[NEW BEST]";
                 }
                 std::cout << '\n';
+
+                if (ticket_counter % config.stats_print_freq == 0)
+                    g_stats.print();
             }
 
             // TODO: Checkpoint logic
@@ -73,5 +82,8 @@ int main(int argc, char** argv) {
 
     std::cout << "\n\nComputation Complete! Best opener is " << game.get_guess_str(state.best_index)
               << " at " << state.global_min << " expected guesses\n";
+
+    g_stats.print();
+
     return 0;
 }

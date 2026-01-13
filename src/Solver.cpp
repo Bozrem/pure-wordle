@@ -1,10 +1,12 @@
 #include "Solver.hpp"
 #include "Definitions.hpp"
 #include "MemoizationTable.hpp"
-// #include "Statistics.hpp"
+#include "Statistics.hpp"
 #include "Wordle.hpp"
 
 #include <omp.h>
+
+thread_local SolverStats t_stats;
 
 Solver::Solver(const Config& c, const Wordle& g, MemoizationTable& m) : config(c), game(g), cache(m) {}
 
@@ -38,7 +40,7 @@ SearchResult Solver::evaluate_guess(const StateBitset& state, int guess_ind, con
 // -- Private Primary --
 
 SearchResult Solver::solve_state(const StateBitset& state, const GuessBitset& remaining_guesses, int depth) {
-    // stats.nodes_visited++;
+    t_stats.nodes_visited++;
 
     if (depth > 6) return { config.fail_cost, -1, 0 }; 
     int active_count = state.count();
@@ -46,7 +48,11 @@ SearchResult Solver::solve_state(const StateBitset& state, const GuessBitset& re
     if (active_count == 0) return { 0.0, -1, 0 };
  
     // Cache Check
-    if (auto entry = cache.get(state, depth)) return *entry;
+    if (auto entry = cache.get(state, depth)) {
+        t_stats.cache_hits++;
+        return *entry;
+    }
+    t_stats.cache_misses++;
 
     GuessBitset useful_guesses = prune_actions(state, remaining_guesses);
 
@@ -78,6 +84,8 @@ inline size_t combine_hash(size_t hash, uint8_t value) {
 }
 
 GuessBitset Solver::prune_actions(const StateBitset& state, const GuessBitset& curr_guesses) {
+    t_stats.prune_function_calls++;
+
     static thread_local std::vector<int> active_indices;
     active_indices.clear();
     active_indices.reserve(state.count()); 
@@ -99,6 +107,7 @@ GuessBitset Solver::prune_actions(const StateBitset& state, const GuessBitset& c
 
     for (int g = 0; g < NUM_GUESSES; ++g) {
         if (!curr_guesses.test(g)) continue;
+        t_stats.total_actions_checked++;
 
         size_t hash = 14695981039346656037ULL; // FNV offset basis
         bool all_same = true;
@@ -115,7 +124,10 @@ GuessBitset Solver::prune_actions(const StateBitset& state, const GuessBitset& c
             hash = combine_hash(hash, p);
         }
 
-        if (all_same) continue; // Useless guess
+        if (all_same) {
+            t_stats.useless_pruned++;
+            continue; // Useless guess
+        }
         // TODO: It's useless when all eliminate nothing. Is this equivelent?
 
         candidates.push_back({hash, g});
@@ -152,9 +164,13 @@ GuessBitset Solver::prune_actions(const StateBitset& state, const GuessBitset& c
             }
         } // TODO: Explore tradeoff of keeping all in memory from the start and avoiding this
 
-        if (!is_duplicate)
+        if (is_duplicate)
+            t_stats.duplicates_pruned++;
+        else
             useful_guesses.set(candidates[i].guess_index);
     }
+
+    t_stats.total_actions_kept += useful_guesses.count();
 
     return useful_guesses;
 }
