@@ -24,6 +24,8 @@ The only real deviation from a "pure" DP is that at a depth of 6 it returns imme
 ### Bitset
 Status - COMPLETE
 
+Speedup - N/A (implemented V1)
+
 Instead of constantly passing around a vector of strings as the state, do a simple std::bitset
 
 ### FastBitset
@@ -36,12 +38,16 @@ FastBitset would be a custom class that simply replicates the used methods of st
 ### Action Pruning
 Status - PARTIAL
 
+Speedup - 1.19x (See partial)
+
 As you go through a game of Wordle, some actions become useless. On the algorithm side, we can optimize this by eliminating useless (Never produces any reduction in the answer bitset) or duplicate (always produces the same subsequent states as another guess) guesses.
 
 This is partial because the implementation needs to be revisited and further tested, but the core code is there.
 
 ### Wordle Lookup Table
 Status - COMPLETE
+
+Speedup - 3.8x
 
 Instead of replaying Wordle transitions all the time while running the algorithm, or even caching them as we go, it's much quicker just to produce a Lookup Table matrix. This just takes a little bit of time at the start of the run, but it further enables the [SIMD optimization](#prune\_state-simd)
 

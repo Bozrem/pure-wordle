@@ -7,8 +7,9 @@ from datetime import datetime
 # --- YOUR DATA HERE ---
 # Format: ("YYYY-MM-DD", time_in_seconds, "Label/Commit Name")
 data = [
-    ("2026-01-05", 1000, "Accurate MemoizationTable (untimed)"),
-    ("2026-01-06", 65.3, "Fixed Parallel Model"),
+    ("2026-01-04", 294.24, "Initial Parallel Model")
+    ("2026-01-06", 248.14, "Action Pruning"),
+    ("2026-01-06", 65.3, "Wordle LUT"),
 ]
 # ----------------------
 
