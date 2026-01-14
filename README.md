@@ -4,7 +4,9 @@ A concurrent C++ project to solve [Wordle](https://www.nytimes.com/games/wordle/
 ## Status - OPTIMIZING
 Has not been run on the full [Wordle answer set](#answer-and-guess-set) yet. Working up to it after many optimizations to not take up too much time on the school cluster
 
-// Add optimization graph here //
+<p align="center">
+  <img src="performance_graph.png" alt="Optimization Progress Graph" width="700">
+</p>
 
 ## Algorithm
 The algorithm itself is a Top-Down Minimax search with memoization. I initially called the repo "pure" Wordle because I have a [different project](https://github.com/Bozrem/mcdp-wordle) exploring an alternative algorithm.
