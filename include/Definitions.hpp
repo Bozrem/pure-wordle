@@ -1,7 +1,8 @@
 #pragma once
 
-#include <bitset>
 #include <string>
+
+#include "FastBitset.hpp"
 
 constexpr int NUM_PATTERNS = 243;
 
@@ -13,8 +14,8 @@ constexpr const char* ANSWERS_PATH = "data/answers_small.txt";
 constexpr int NUM_GUESSES = 12972;  // Must match in file
 constexpr const char* GUESSES_PATH = "data/guesses.txt";
 
-using StateBitset = std::bitset<NUM_ANSWERS>;
-using GuessBitset = std::bitset<NUM_GUESSES>;
+using StateBitset = FastBitset<NUM_ANSWERS>;
+using GuessBitset = FastBitset<NUM_GUESSES>;
 
 struct SearchResult {
     double expected_cost;

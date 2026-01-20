@@ -40,21 +40,18 @@ add_library(WordleCore
     include/MemoizationTable.hpp
     include/Solver.hpp
     include/Wordle.hpp
+    include/FastBitset.hpp
 )
 
 target_include_directories(WordleCore PUBLIC include)
 
 target_link_libraries(WordleCore PUBLIC OpenMP::OpenMP_CXX phmap)
 
-if(MSVC)
-    target_compile_options(WordleCore PRIVATE /W4 /O2 /MP)
-else()
-    target_compile_options(WordleCore PRIVATE
-        -Wall -Wextra
-        -O3 -march=znver2 -funroll-loops
-        -g -fno-omit-frame-pointer
-    )
-endif()
+target_compile_options(WordleCore PRIVATE
+    -Wall -Wextra
+    -O3 -march=znver2 -funroll-loops
+    -g -fno-omit-frame-pointer
+)
 
 # --- MAIN EXECUTABLE ---
 add_executable(WordleSolver src/main.cpp)

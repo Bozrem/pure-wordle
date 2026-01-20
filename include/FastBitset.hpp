@@ -38,7 +38,7 @@ struct alignas(32) FastBitset {
         // Pretty much the same thing as reset, but does a 1 and an or
     }
 
-    bool test(int pos) {
+    bool test(int pos) const {
         return (words[pos / 64] & (1ULL << (pos % 64))) != 0;
         // 1ULL portion masks everything but that
         // Words get the word, if that one was 1 it remains 1 and thus is > 0
@@ -47,7 +47,7 @@ struct alignas(32) FastBitset {
     int count() const {
         int c = 0;
         for (int w = 0; w < NUM_WORDS; ++w)
-            c += __builtin_popcountll(w);
+            c += __builtin_popcountll(words[w]);
         return c;
     }
 

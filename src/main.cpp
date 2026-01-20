@@ -42,8 +42,10 @@ int main(int argc, char** argv) {
     std::mutex save_mutex;
 
     // These set both to all being possible
-    const StateBitset root_state = ~StateBitset();      // Default constructor is all 0. Flip it
-    const GuessBitset root_guesses = ~GuessBitset();
+    StateBitset root_state = StateBitset();
+    root_state.set();
+    GuessBitset root_guesses = GuessBitset();
+    root_guesses.set();
 
     std::cout << "Starting Simulation\n\n";
 

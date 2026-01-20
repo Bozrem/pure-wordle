@@ -14,9 +14,9 @@ Solver::Solver(const Config& c, const Wordle& g, MemoizationTable& m) : config(c
 
 SearchResult Solver::evaluate_guess(const StateBitset& state, int guess_ind, const GuessBitset& useful_guesses, int depth) {
     std::array<int, NUM_PATTERNS> pattern_count = {0};
-    for_each_active_bit(state, [&](int answer_idx) {
-        pattern_count[game.get_pattern_lookup(guess_ind, answer_idx)]++;
-    });
+
+    for (int answer_index : state) // This is builtin optimized
+        pattern_count[game.get_pattern_lookup(guess_ind, answer_index)]++;
 
     double total_cost = 0.0;
     int max_height = 0;
@@ -90,9 +90,8 @@ GuessBitset Solver::prune_actions(const StateBitset& state, const GuessBitset& c
     active_indices.clear();
     active_indices.reserve(state.count()); 
 
-    for_each_active_bit(state, [&](int i) {
+    for (int i : state) // builtin optimized, only active inds
         active_indices.push_back(i);
-    });
 
 
     struct Candidate {
@@ -104,9 +103,7 @@ GuessBitset Solver::prune_actions(const StateBitset& state, const GuessBitset& c
     candidates.clear();
     candidates.reserve(NUM_GUESSES);
 
-
-    for (int g = 0; g < NUM_GUESSES; ++g) {
-        if (!curr_guesses.test(g)) continue;
+    for (int g : curr_guesses) { // builtin optimized, only active inds
         t_stats.total_actions_checked++;
 
         size_t hash = 14695981039346656037ULL; // FNV offset basis
