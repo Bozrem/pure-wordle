@@ -74,7 +74,7 @@ const StateBitset Wordle::prune_state(const StateBitset& current, int guess_inde
     // TODO: See if SIMD is still valuable after the efficient iterator
     for (int i : current) {
         if (get_pattern_lookup(guess_index, i) == target_pattern) {
-            next_state.set();
+            next_state.set(i);
         }
     }
     return next_state;
