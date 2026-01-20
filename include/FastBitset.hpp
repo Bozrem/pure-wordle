@@ -7,7 +7,7 @@
 
 // The template makes it so each size that I use can be compiled/optimized separately, but written once
 template <int N>
-struct alignas(32) FastBitset {
+struct FastBitset {
     static constexpr int NUM_WORDS = (N + 63) / 64; // Doing 64 bit words
 
     uint64_t words[NUM_WORDS]; // Primary data structure
