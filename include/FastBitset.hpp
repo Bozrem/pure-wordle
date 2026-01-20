@@ -31,6 +31,7 @@ struct alignas(32) FastBitset {
 
     void set() {
         std::memset(words, 0xFF, sizeof(words));
+        clear_padding_bits();
     }
 
     void set(int pos) {
@@ -118,6 +119,15 @@ struct alignas(32) FastBitset {
     BitIterator end() const {
         return BitIterator(this, NUM_WORDS);
     } // If past the last word index then done
+
+private:
+    void clear_padding_bits() {
+        constexpr int extra_bits = N % 64;
+        if constexpr (extra_bits != 0) {
+            constexpr uint64_t mask = (1ULL << extra_bits) - 1;
+            words[NUM_WORDS - 1] &= mask;
+        }
+    }
 };
 
 
