@@ -29,11 +29,15 @@ Speedup - N/A (implemented V1)
 Instead of constantly passing around a vector of strings as the state, do a simple std::bitset
 
 ### FastBitset
-Status - TODO
+Status - PARTIAL
+
+Speedup - 1.17x
 
 std::bitset is pretty fast, but by hiding the data it makes it impossible (or at least not recommended) to do SIMD operations.
 
-FastBitset would be a custom class that simply replicates the used methods of std::bitset while making the core data public
+FastBitset now works essentially as std::bitset, but exposes the underlying words for direct SIMD access. Additionally, it defines an iterator that allows [Builtin Usage](#builtin-usage) to do fast iterations of only the active bits.
+
+It currently has some rare memory error that I need to investigate
 
 ### Action Pruning
 Status - PARTIAL
@@ -57,14 +61,20 @@ Status - TODO
 The current main loop parallelizes over starting guesses (see [Concurrency](#system-design)) alphabetically, which seems more likely to cause redundant work. Could reduce the 10% redundancy rate for way more cache hits by selecting words that are very different, so it's less likely that two threads want the same state at the same time
 
 ### Prune\_state SIMD
-Status - TODO
+Status - COMPLETE
 
-Prune\_state compares LUT results to a single set of colors, and is thus a really good candidate for vectorization. The most recent profile showed upwards of 30% of the compute time is in that, so this could be a significant speedup.
+Speedup - 1.37x
+
+LUT lends itself really well to vectorization. This optimization loads it into vector registers and does quicker comparisons.
 
 ### Builtin Usage
-Status - TODO
+Status - COMPLETE
 
-There are some spots in the Solver that it must go through the whole bitmap. Currently, it uses branching to skip bad ones. Could be much faster with some sort of `find_next_set_bit` instruction.
+Speedup - N/A
+
+This was sort of a part of the FastBitset iterator usage, so I don't have an exact number for it's speedup
+
+This simply uses some builtins to much more efficiently find active bits
 
 ## System Design
 
