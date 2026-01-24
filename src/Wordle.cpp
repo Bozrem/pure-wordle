@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <string>
 #include <array>
+#include <immintrin.h>
 
 Wordle::Wordle(const Config& c) : config(c) {
     std::fstream answer_file(ANSWERS_PATH, std::ios::in);
@@ -32,7 +33,7 @@ void Wordle::build_lut() {
             pattern_lut[g * NUM_ANSWERS + a] = compute_pattern(guesses[g], answers[a]); // Shouldn't get out of bounds
         }
     }
-} // TODO: Test LUT
+}
 
 Pattern Wordle::compute_pattern(const std::string& guess, const std::string& target) {
     std::array<Color, 5> colors = {Color::Gray, Color::Gray, Color::Gray, Color::Gray, Color::Gray};
@@ -71,14 +72,33 @@ Pattern Wordle::compute_pattern(const std::string& guess, const std::string& tar
 const StateBitset Wordle::prune_state(const StateBitset& current, int guess_index, Pattern target_pattern) const {
     StateBitset next_state;
 
-    // TODO: See if SIMD is still valuable after the efficient iterator
-    for (int i : current) {
-        if (get_pattern_lookup(guess_index, i) == target_pattern) {
-            next_state.set(i);
-        }
+    __m256i targets = _mm256_set1_epi8(static_cast<char>(target_pattern));
+
+    const uint8_t* row = &pattern_lut[guess_index * NUM_ANSWERS];
+
+    // Since I can hold 256 bits, thats 32 * 8
+    for (int w = 0; w < current.NUM_WORDS; ++w) {
+        const uint8_t* low_ptr = row + (w * 64);
+
+        __m256i low_vec = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(low_ptr));
+        __m256i low_res = _mm256_cmpeq_epi8(low_vec, targets);
+
+        uint32_t low_mask = static_cast<uint32_t>(_mm256_movemask_epi8(low_res));
+
+        // Do upper half
+        const uint8_t* hi_ptr = low_ptr + 32;
+
+        __m256i hi_vec = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(hi_ptr));
+        __m256i hi_res = _mm256_cmpeq_epi8(hi_vec, targets);
+
+        uint32_t hi_mask = static_cast<uint32_t>(_mm256_movemask_epi8(hi_res));
+
+        // Combine and put into new_state
+        uint64_t combined_mask = static_cast<uint64_t>(low_mask) | (static_cast<uint64_t>(hi_mask) << 32);
+
+        next_state.words[w] = current.words[w] & combined_mask;
     }
+
     return next_state;
 }
-
-
 
