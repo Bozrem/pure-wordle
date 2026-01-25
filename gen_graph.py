@@ -11,7 +11,8 @@ data = [
     ("2026-01-05", 248.14, "Action Pruning"),
     ("2026-01-06", 65.3, "Wordle LUT"),
     ("2026-01-19", 55.89, "FastBitset Iterator"),
-    ("2026-01-24", 40.77, "SIMD State Pruning")
+    ("2026-01-24", 40.77, "SIMD State Pruning"),
+    ("2026-01-25", 109.23, "Locking Bugfix :(")
 ]
 # ----------------------
 
