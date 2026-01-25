@@ -54,9 +54,15 @@ Speedup - 3.8x
 Instead of replaying Wordle transitions all the time while running the algorithm, or even caching them as we go, it's much quicker just to produce a Lookup Table matrix. This just takes a little bit of time at the start of the run, but it further enables the [SIMD optimization](#prune\_state-simd)
 
 ### Randomized Work Distribution
-Status - TODO
+Status - COMPLETE
 
-The current main loop parallelizes over starting guesses (see [Concurrency](#system-design)) alphabetically, which seems more likely to cause redundant work. Could reduce the 10% redundancy rate for way more cache hits by selecting words that are very different, so it's less likely that two threads want the same state at the same time
+Speedup - 1.23x
+
+Before this, `main` iterated over the guesses lexicographically. However, words that are close to each other, like `sates` and `sated`, are also likely to result in similar game trees. Parallel hashmap is non-blocking, so this would result in these doing duplicate work.
+
+This optimization just does a deterministic shuffle of the ordering at the start, thus avoiding that more often.
+
+The previous redundancy rate was around 7 to 10 percent. This moved it down to 0.97%
 
 ### Prune\_state SIMD
 Status - COMPLETE
