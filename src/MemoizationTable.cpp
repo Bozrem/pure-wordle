@@ -8,28 +8,37 @@ MemoizationTable::MemoizationTable(const Config& c) : config(c) {
 
 
 std::optional<SearchResult> MemoizationTable::get(const StateBitset& state, int depth) {
+    std::optional<SearchResult> result = std::nullopt;
+
     // Check Agnostic Table
-    if (auto it = agnostic_map.find(state); it != agnostic_map.end()) {
-        if (depth + it->second.max_subtree_height <= 6) {
-            return SearchResult{
-                it->second.expected_guesses,
-                it->second.best_guess_index,
-                it->second.max_subtree_height
+    agnostic_map.if_contains(state, [&](const auto& kv) {
+        const AgnosticEntry& entry = kv.second;
+
+        if (depth + entry.max_subtree_height <= 6) {
+            result = SearchResult{
+                entry.expected_guesses,
+                entry.best_guess_index,
+                entry.max_subtree_height
             };
         }
-    }
+    });
+
+    if (result) return result;
 
     // Check Specific Table
     SpecificKey key{state, static_cast<uint8_t>(depth)};
-    if (auto it = specific_map.find(key); it != specific_map.end()) {
-        return SearchResult{
-            it->second.expected_guesses,
-            it->second.best_guess_index,
-            7 - depth // If it wasn't a clean value, it's height must be at least to the bottom + 1
-        };
-    }
 
-    return std::nullopt;
+    specific_map.if_contains(key, [&](const auto& kv) {
+        const SpecificEntry& entry = kv.second;
+
+        result = SearchResult{
+            entry.expected_guesses,
+            entry.best_guess_index,
+            7 - depth 
+        };
+    });
+
+    return result;
 }
 
 void MemoizationTable::insert(const StateBitset& state, int depth, const SearchResult& result) {

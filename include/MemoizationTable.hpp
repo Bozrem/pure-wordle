@@ -80,7 +80,8 @@ private:
         AgnosticHash,
         std::equal_to<StateBitset>,
         std::allocator<std::pair<const StateBitset, AgnosticEntry>>,
-        9 // Means 2^9 strips
+        9, // Means 2^9 strips
+        std::mutex
     >;
 
     using SpecificMap = phmap::parallel_flat_hash_map<
@@ -89,7 +90,8 @@ private:
         SpecificHash,
         std::equal_to<SpecificKey>,
         std::allocator<std::pair<const SpecificKey, SpecificEntry>>,
-        9
+        9,
+        std::mutex
     >;
 
     // -- Map Objects --
