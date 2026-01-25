@@ -4,9 +4,11 @@
 #include "Statistics.hpp"
 #include "Definitions.hpp"
 
-#include <bitset>
 // #include <chrono>
 #include <iostream>
+#include <numeric>
+#include <algorithm>
+#include <random>
 
 SolverStats g_stats;
 
@@ -28,6 +30,12 @@ int main(int argc, char** argv) {
 
     game.build_lut();
     std::cout << "Build LUT\n";
+
+    std::vector<int> task_order(NUM_GUESSES);
+    std::iota(task_order.begin(), task_order.end(), 0);
+    std::mt19937 rng(67); // hehe
+    std::shuffle(task_order.begin(), task_order.end(), rng);
+    std::cout << "Shuffled Task Order\n";
 
     MemoizationTable cache(config);
     Solver solver(config, game, cache);
@@ -54,10 +62,10 @@ int main(int argc, char** argv) {
         t_stats = SolverStats(); // Every thread gets it's own
 
         while (true) {
-            // TODO: Optimization to consider, choose random guesses instead of alphabetical
-            // Right now, we probably often get cache misses because words are similar, and a different thread is already working on it
-            int guess_ind = ticket_counter.fetch_add(1);
-            if (guess_ind >= NUM_GUESSES) break;
+            int ticket = ticket_counter.fetch_add(1);
+            if (ticket >= NUM_GUESSES) break;
+
+            int guess_ind = task_order[ticket];
 
             SearchResult res = solver.evaluate_guess(root_state, guess_ind, root_guesses, 1);
 
