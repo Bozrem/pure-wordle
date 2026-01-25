@@ -23,7 +23,7 @@ Wordle::Wordle(const Config& c) : config(c) {
     if (guesses.size() != NUM_GUESSES)
         throw std::runtime_error("Guesses size mismatch: expected " + std::to_string(NUM_GUESSES) + ", got " + std::to_string(guesses.size()));
 
-    pattern_lut.resize(NUM_GUESSES * NUM_ANSWERS); // Inits all to 0
+    pattern_lut.resize(NUM_GUESSES * NUM_ANSWERS + 64); // Inits all to 0
 }
 
 void Wordle::build_lut() {
