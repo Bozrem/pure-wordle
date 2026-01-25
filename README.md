@@ -29,15 +29,13 @@ Speedup - N/A (implemented V1)
 Instead of constantly passing around a vector of strings as the state, do a simple std::bitset
 
 ### FastBitset
-Status - PARTIAL
+Status - COMPLETE
 
 Speedup - 1.17x
 
 std::bitset is pretty fast, but by hiding the data it makes it impossible (or at least not recommended) to do SIMD operations.
 
 FastBitset now works essentially as std::bitset, but exposes the underlying words for direct SIMD access. Additionally, it defines an iterator that allows [Builtin Usage](#builtin-usage) to do fast iterations of only the active bits.
-
-It currently has some rare memory error that I need to investigate
 
 ### Action Pruning
 Status - PARTIAL
@@ -100,28 +98,34 @@ I am interested in exploring an OpenMPI solution that uses multiple nodes, but t
 ### Structure
 ```
 .
-├── CMakeLists.txt
+├── CMakeLists.txt          // Has both release and debug build types
 ├── data
+│   ├── answers_small.txt   // A smaller data set to benchmark with
 │   ├── answers.txt
-│   ├── answers_small.txt       // Set of 50 answers for testing and benchmarking
 │   └── guesses.txt
+├── gen_graph.py            // Script for the lovely graph at the top
 ├── include
-│   ├── Definitions.hpp         // Config struct and constexprs
-│   ├── MemoizationTable.hpp    // Caching
-│   ├── Solver.hpp              // DP Algorithm
-│   ├── Statistics.hpp          // Statistic Tracking
-│   └── Wordle.hpp              // Wordle LUT and state transitions
-├── run_solver.slurm
+│   ├── Definitions.hpp
+│   ├── FastBitset.hpp      // Replaces std::bitset. See section in optimization list
+│   ├── MemoizationTable.hpp
+│   ├── Solver.hpp
+│   ├── Statistics.hpp
+│   └── Wordle.hpp
+├── LICENSE
+├── multirun.sh             // Simple script to run the benchmark many times to try and catch mem errors
+├── performance_graph.png
+├── README.md
+├── run_solver.slurm        // Slurm Scheduling script
 ├── src
+│   ├── main.cpp
 │   ├── MemoizationTable.cpp
 │   ├── Solver.cpp
-│   ├── Wordle.cpp
-│   └── main.cpp
+│   └── Wordle.cpp
 └── tests
     ├── CMakeLists.txt
     ├── MemoizationTableTest.cpp
-    ├── WordleTests.cpp
-    └── test_patterns.csv       // Some example Wordle results to test against
+    ├── test_patterns.csv
+    └── WordleTests.cpp
 ```
 
 ### Dependencies
@@ -131,16 +135,20 @@ These are all installed via CMake
 
 ### Building Locally
 > [!NOTE]
-> The current build relies on an x86\_64 architecture. Extension to other machines is on the TODO list.
+> The current build requires an x86_64 architecture and AVX2 support
 
 ```sh
+# First is release, second is debug
 mkdir build
+mkdir build_debug
 
-# Install dependencies
-cmake -S . -B build
+# Setup Makefiles
+cmake -B build -DCMAKEE_BUILD_TYPE=Release
+cmake -B build_debug -DCMAKEE_BUILD_TYPE=Debug
 
 # Compile
-cmake --build build
+cmake --build build -j
+cmake --build build_debug -j
 ```
 
 #### Lotus Cluster
