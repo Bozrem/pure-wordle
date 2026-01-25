@@ -21,65 +21,15 @@ The only real deviation from a "pure" DP is that at a depth of 6 it returns imme
 
 
 ## Optimizations
-### Bitset
-Status - COMPLETE
-
-Speedup - N/A (implemented V1)
-
-Instead of constantly passing around a vector of strings as the state, do a simple std::bitset
-
-### FastBitset
-Status - COMPLETE
-
-Speedup - 1.17x
-
-std::bitset is pretty fast, but by hiding the data it makes it impossible (or at least not recommended) to do SIMD operations.
-
-FastBitset now works essentially as std::bitset, but exposes the underlying words for direct SIMD access. Additionally, it defines an iterator that allows [Builtin Usage](#builtin-usage) to do fast iterations of only the active bits.
-
-### Action Pruning
-Status - PARTIAL
-
-Speedup - 1.19x (See partial)
-
-As you go through a game of Wordle, some actions become useless. On the algorithm side, we can optimize this by eliminating useless (Never produces any reduction in the answer bitset) or duplicate (always produces the same subsequent states as another guess) guesses.
-
-This is partial because the implementation needs to be revisited and further tested, but the core code is there.
-
-### Wordle Lookup Table
-Status - COMPLETE
-
-Speedup - 3.8x
-
-Instead of replaying Wordle transitions all the time while running the algorithm, or even caching them as we go, it's much quicker just to produce a Lookup Table matrix. This just takes a little bit of time at the start of the run, but it further enables the [SIMD optimization](#prune\_state-simd)
-
-### Randomized Work Distribution
-Status - COMPLETE
-
-Speedup - 1.23x
-
-Before this, `main` iterated over the guesses lexicographically. However, words that are close to each other, like `sates` and `sated`, are also likely to result in similar game trees. Parallel hashmap is non-blocking, so this would result in these doing duplicate work.
-
-This optimization just does a deterministic shuffle of the ordering at the start, thus avoiding that more often.
-
-The previous redundancy rate was around 7 to 10 percent. This moved it down to 0.97%
-
-### Prune\_state SIMD
-Status - COMPLETE
-
-Speedup - 1.37x
-
-LUT lends itself really well to vectorization. This optimization loads it into vector registers and does quicker comparisons.
-
-### Builtin Usage
-Status - COMPLETE
-
-Speedup - N/A
-
-This was sort of a part of the FastBitset iterator usage, so I don't have an exact number for it's speedup
-
-This simply uses some builtins to much more efficiently find active bits
-
+| Optimization | Status | Speedup | Description |
+| :--- | :---: | :---: | :--- |
+| **Bitset** | COMPLETE | N/A (V1) | Instead of constantly passing around a vector of strings as the state, do a simple `std::bitset`. |
+| **FastBitset** | COMPLETE | 1.17x | `std::bitset` is pretty fast, but by hiding the data it makes it impossible (or at least not recommended) to do SIMD operations. FastBitset now works essentially as `std::bitset`, but exposes the underlying words for direct SIMD access. Additionally, it defines an iterator that allows Builtin Usage to do fast iterations of only the active bits. |
+| **Action Pruning** | PARTIAL | 1.19x (See partial) | As you go through a game of Wordle, some actions become useless. On the algorithm side, we can optimize this by eliminating useless (Never produces any reduction in the answer bitset) or duplicate (always produces the same subsequent states as another guess) guesses. This is partial because the implementation needs to be revisited and further tested, but the core code is there. |
+| **Wordle Lookup Table** | COMPLETE | 3.8x | Instead of replaying Wordle transitions all the time while running the algorithm, or even caching them as we go, it's much quicker just to produce a Lookup Table matrix. This just takes a little bit of time at the start of the run, but it further enables the SIMD optimization. |
+| **Randomized Work Distribution** | COMPLETE | 1.23x | Before this, `main` iterated over the guesses lexicographically. However, words that are close to each other, like `sates` and `sated`, are also likely to result in similar game trees. Parallel hashmap is non-blocking, so this would result in these doing duplicate work. This optimization just does a deterministic shuffle of the ordering at the start, thus avoiding that more often. The previous redundancy rate was around 7 to 10 percent. This moved it down to 0.97%. |
+| **Prune_state SIMD** | COMPLETE | 1.37x | LUT lends itself really well to vectorization. This optimization loads it into vector registers and does quicker comparisons. |
+| **Builtin Usage** | COMPLETE | N/A | This was sort of a part of the FastBitset iterator usage, so I don't have an exact number for its speedup. This simply uses some builtins to much more efficiently find active bits. |
 ## System Design
 
 ### Memoization Strategy
