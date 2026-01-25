@@ -47,11 +47,13 @@ target_include_directories(WordleCore PUBLIC include)
 
 target_link_libraries(WordleCore PUBLIC OpenMP::OpenMP_CXX phmap)
 
-target_compile_options(WordleCore PRIVATE
-    -Wall -Wextra
+target_compile_options(WordleCore PUBLIC 
+    -Wall -Wextra 
     -O3 -march=znver2 -funroll-loops
     -g -fno-omit-frame-pointer
+    -fsanitize=address
 )
+target_link_options(WordleCore PUBLIC -fsanitize=address)
 
 # --- MAIN EXECUTABLE ---
 add_executable(WordleSolver src/main.cpp)
