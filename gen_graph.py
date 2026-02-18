@@ -1,8 +1,6 @@
 # NOTE: This is AI generated, just a nice little graphic
 
 import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
-from datetime import datetime
 
 # --- YOUR DATA HERE ---
 # Format: ("YYYY-MM-DD", time_in_seconds, "Label/Commit Name")
@@ -18,24 +16,25 @@ data = [
 # ----------------------
 
 # Unpack data
-dates = [datetime.strptime(d[0], "%Y-%m-%d") for d in data]
+dates = [d[0] for d in data] # Keep as strings, not datetime objects
 times = [d[1] for d in data]
 labels = [d[2] for d in data]
+x_indices = range(len(data)) # Create linear indices (0, 1, 2...)
 
 # Style: Dark background for that "Terminal" look
 plt.style.use('dark_background')
 fig, ax = plt.subplots(figsize=(10, 6))
 
-# Plot the line
-ax.plot(dates, times, color='#00ff41', marker='o', linewidth=2, markersize=8) # Matrix Green
+# Plot the line against the linear indices (not dates)
+ax.plot(x_indices, times, color='#00ff41', marker='o', linewidth=2, markersize=8)
 
 # Add background grid
 ax.grid(color='gray', linestyle='--', linewidth=0.5, alpha=0.3)
 
-# Annotate points (The "Why")
+# Annotate points
 for i, txt in enumerate(labels):
     ax.annotate(txt, 
-                (dates[i], times[i]), 
+                (x_indices[i], times[i]), 
                 xytext=(10, 10), 
                 textcoords='offset points',
                 fontsize=9,
@@ -47,9 +46,9 @@ ax.set_title('Solver Optimization - 50 answers, full guesses', fontsize=16, font
 ax.set_ylabel('Benchmark Time (seconds)', fontsize=12)
 ax.set_xlabel('Date / Commit', fontsize=12)
 
-# Format X-axis dates nicely
-fig.autofmt_xdate()
-ax.fmt_xdate = mdates.DateFormatter('%Y-%m-%d')
+# Set X-ticks to be the linear indices, but label them with the date strings
+ax.set_xticks(x_indices)
+ax.set_xticklabels(dates, rotation=45, ha='right')
 
 # Save transparent for easy README embedding
 plt.savefig('performance_graph.png', transparent=True, dpi=100, bbox_inches='tight')
